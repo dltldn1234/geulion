@@ -9,3 +9,9 @@ Icon?
 *.swp
 *.swo
 *~
+
+# Node.js and TypeScript build output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo

@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts"],
+  "references": [
+    { "path": "../ast" },
+    { "path": "../lexer" },
+    { "path": "../parser" },
+    { "path": "../semantic" },
+    { "path": "../codegen-js" }
+  ]
+}

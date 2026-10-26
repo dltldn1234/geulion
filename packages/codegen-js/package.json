@@ -1,0 +1,17 @@
+{
+  "name": "@geulion/codegen-js",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "JavaScript code generation package for GEULION.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "dependencies": {
+    "@geulion/ast": "workspace:*"
+  }
+}
