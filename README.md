@@ -10,7 +10,7 @@ GEULION은 한국어를 우선으로 설계하는 범용 프로그래밍 언어 
 
 ## 현재 상태
 
-현재는 Phase 0 저장소 초기화 단계입니다. 프로젝트 문서와 기본 저장소 설정만 마련했으며, 언어 문법, Lexer, Parser, Compiler는 아직 구현하지 않았습니다.
+현재는 컴파일러 개발 기반 구성을 마친 초기 단계입니다. pnpm 워크스페이스, TypeScript 패키지 경계, 개발 검사 도구와 CLI의 도움말·버전 명령만 준비되어 있습니다. GEULION 문법과 Lexer, Parser, Semantic Analysis, Compiler, JavaScript 코드 생성은 아직 구현하지 않았습니다.
 
 개발 작업은 GitHub Issue에서 목표와 완료 조건을 정한 뒤 진행합니다. 자세한 참여 방법은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.
 
