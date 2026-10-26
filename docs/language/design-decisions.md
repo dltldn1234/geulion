@@ -86,13 +86,13 @@ v0.1의 기본 매개 타입은 `목록[정수]`, `사전[정수]`, `선택[문�
 
 이 우선순위는 기능이 **Implemented**라는 뜻이 아니며, v0.1 명세와 이후 구현 작업의 범위를 나눕니다.
 
-## 추적 중인 결정
+## 결정 상태 요약
 
-다음 세부 사항은 각 Issue에서 규범 문서로 확정한 뒤 상태를 바꿉니다.
+세부 사항의 현재 규범 상태는 다음과 같습니다.
 
 | 주제                                                          | 상태      | 문서                                   |
 | ------------------------------------------------------------- | --------- | -------------------------------------- |
 | 키워드, 문장 종료, 주석, Unicode 식별자, EBNF, 기본 타입 표기 | Specified | `lexical-structure.md`, `grammar.ebnf` |
 | 기본/컬렉션/선택 타입, 추론, 변환                             | Specified | `type-system.md`                       |
 | 평가 순서, overflow, 스코프, 반환과 진단 코드                 | Specified | `semantics.md`, `diagnostics.md`       |
-| 예제의 문법 적합성 및 통합 명세                               | Proposed  | `examples.md`, `specification-v0.1.md` |
+| 정상/비정상 예제, 통합 명세 및 Lexer/Parser 계약              | Specified | `examples.md`, `specification-v0.1.md` |
