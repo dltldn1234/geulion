@@ -52,7 +52,9 @@
 
 식별자 문자 집합, 정규화, 예약어 비교, 소스 위치는 언어 버전이 고정한 Unicode 규칙에 따릅니다. 구현은 런타임 내장 Unicode 데이터가 다르다는 이유로 허용 식별자나 토큰 위치를 바꾸면 안 됩니다. 문자열 값 정규화와 식별자 정규화는 분리합니다.
 
-**근거:** 사용자 환경·Node.js·JavaScript 엔진의 Unicode 데이터 버전 차이가 식별자 해석에 영향을 주지 않게 합니다. 식별자 속성은 [Unicode UAX #31](https://www.unicode.org/reports/tr31/), 정규화는 [Unicode UAX #15](https://www.unicode.org/reports/tr15/)를 기준으로 정확한 버전을 고정합니다.
+**구체 규칙:** v0.1은 Unicode 18.0.0의 `XID_Start`/`XID_Continue`를 사용하고 default-ignorable 및 bidi 제어 문자를 제외합니다. 이름 비교 전에 NFC를 적용하고 원본 철자는 진단용으로 보존합니다. 문자열 값은 정규화하지 않습니다.
+
+**근거:** 사용자 환경·Node.js·JavaScript 엔진의 Unicode 데이터 버전 차이가 식별자 해석에 영향을 주지 않게 합니다. XID 속성은 [Unicode UAX #31](https://www.unicode.org/reports/tr31/), NFC는 [Unicode UAX #15](https://www.unicode.org/reports/tr15/)의 18.0.0 데이터에 고정합니다.
 
 ### LD-007 — 언어 기능과 구현 상태를 분리해 표시한다
 
@@ -60,9 +62,17 @@
 
 문서에서 규칙을 정의한 것만으로 기능이 구현된 것은 아닙니다. 구현 상태는 코드가 존재하고 검증을 통과했을 때만 **Implemented**로 표시합니다. v0.1 범위를 벗어난 기능은 **Deferred**, 아직 결정이 필요한 설계는 **Proposed**로 표시합니다.
 
+### LD-008 — 기본 매개 타입은 대괄호 표기를 쓴다
+
+**상태: Specified**
+
+v0.1의 기본 매개 타입은 `목록[정수]`, `사전[정수]`, `선택[문자열]`처럼 대괄호로 표기합니다. `<`와 `>`는 비교 연산자로만 남겨 타입 닫기 기호와 비교식 사이에서 토큰을 다시 나누는 문맥 의존 규칙을 만들지 않습니다. 사용자 정의 제네릭은 v0.1 범위가 아닙니다.
+
+**근거:** Lexer가 항상 동일한 longest-match 토큰화를 사용하고 Parser가 타입 문맥에 따라 `>` 토큰을 분할하지 않도록 합니다. 목록 리터럴·인덱싱도 대괄호를 사용하지만 타입 문맥은 선언의 `:` 또는 함수 반환부 `->`로 결정됩니다.
+
 ## v0.1 우선순위
 
-**Specified 범위:** 기본 스칼라 타입, 변수와 상수, 산술/비교/논리 표현식, 함수, 조건문과 반복문, lexical scope, 타입 검사, 기본 오류 진단.
+**v0.1 목표 범위:** 기본 스칼라 타입, 변수와 상수, 산술/비교/논리 표현식, 함수, 조건문과 반복문, lexical scope, 타입 검사, 기본 오류 진단. 이 목록은 목표 범위이며, 각 기능이 **Specified** 또는 **Implemented** 상태라는 뜻이 아닙니다.
 
 **Deferred:** 클래스/상속, 사용자 정의 제네릭, 패턴 매칭, 매크로, 동시성/비동기 실행, 사용자 정의 연산자, 수동 메모리 관리, FFI, 모듈/패키지 시스템, 함수 오버로딩과 기본 매개변수.
 
@@ -72,9 +82,9 @@
 
 다음 세부 사항은 각 Issue에서 규범 문서로 확정한 뒤 상태를 바꿉니다.
 
-| 주제                                          | 상태     | 문서                                   |
-| --------------------------------------------- | -------- | -------------------------------------- |
-| 키워드, 문장 종료, 주석, Unicode 식별자, EBNF | Proposed | `lexical-structure.md`, `grammar.ebnf` |
-| 기본/컬렉션/선택 타입, 추론, 변환             | Proposed | `type-system.md`                       |
-| 평가 순서, overflow, 스코프, 반환과 진단 코드 | Proposed | `semantics.md`, `diagnostics.md`       |
-| 예제의 문법 적합성 및 통합 명세               | Proposed | `examples.md`, `specification-v0.1.md` |
+| 주제                                                          | 상태      | 문서                                   |
+| ------------------------------------------------------------- | --------- | -------------------------------------- |
+| 키워드, 문장 종료, 주석, Unicode 식별자, EBNF, 기본 타입 표기 | Specified | `lexical-structure.md`, `grammar.ebnf` |
+| 기본/컬렉션/선택 타입, 추론, 변환                             | Proposed  | `type-system.md`                       |
+| 평가 순서, overflow, 스코프, 반환과 진단 코드                 | Proposed  | `semantics.md`, `diagnostics.md`       |
+| 예제의 문법 적합성 및 통합 명세                               | Proposed  | `examples.md`, `specification-v0.1.md` |
