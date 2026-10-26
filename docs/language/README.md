@@ -4,7 +4,7 @@ GEULION(글리온)은 한국어 사용자가 읽고 작성할 수 있는 정적 
 
 ## 상태
 
-Language Specification v0.1은 통합 초안 작성 중입니다. 설계 원칙, 어휘 구조, 핵심 문법, 타입 체계, 실행 의미론, 진단 규칙은 **Specified**입니다. 정상/비정상 예제와 Lexer/Parser 구현 계약을 정의하고 문서 간 모순을 검증한 뒤 버전을 완성합니다.
+Language Specification v0.1의 문서 규칙은 **Specified**입니다. 정상/비정상 적합성 예제와 Lexer/Parser 계약을 포함합니다. 명세가 작성되었다는 뜻이며 Lexer, Parser 또는 Compiler가 구현되었다는 뜻은 아닙니다.
 
 문서의 기능 상태는 다음 뜻으로 사용합니다.
 
@@ -17,6 +17,7 @@ Language Specification v0.1은 통합 초안 작성 중입니다. 설계 원칙,
 
 ## 문서 구성
 
+- `specification-v0.1.md` — 버전별 규범 명세, 문서 우선순위, Lexer/Parser 경계
 - `design-decisions.md` — 설계 원칙과 결정 근거
 - `lexical-structure.md` — 문자, 식별자, 리터럴, 주석, 토큰과 위치 규칙
 - `grammar.ebnf` — 형식 문법과 표현식 우선순위
@@ -24,9 +25,8 @@ Language Specification v0.1은 통합 초안 작성 중입니다. 설계 원칙,
 - `semantics.md` — 스코프, 평가 순서, 제어 흐름과 값 의미론
 - `diagnostics.md` — 진단 데이터와 오류 코드
 - `examples.md` — 적합/비적합 예제와 향후 적합성 검사 분류
-- `specification-v0.1.md` — 위 문서들을 연결하는 버전별 규범 명세
 
-각 문서는 같은 규칙을 중복 정의하지 않습니다. `specification-v0.1.md`가 규범 문서의 목차와 우선순위를 정하고, 세부 규칙은 해당 전문 문서에서 정의합니다. 모순이 발견되면 추측으로 구현하지 않고 명세 변경으로 해결합니다. 이 문서 세트가 아직 통합 초안인 동안 각 파일의 **Specified**는 해당 파일에 규칙이 명시되었다는 뜻이며, 전체 v0.1 정식 완료는 Issue D의 예제와 구현 계약 검증 이후입니다.
+각 문서는 같은 규칙을 중복 정의하지 않습니다. `specification-v0.1.md`가 규범 문서의 목차와 우선순위를 정하고, 세부 규칙은 해당 전문 문서에서 정의합니다. 모순이 발견되면 추측으로 구현하지 않고 명세 변경으로 해결합니다.
 
 ## 범위
 
