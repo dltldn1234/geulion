@@ -18,7 +18,7 @@
 
 식별자를 이름으로 비교하기 전에 **NFC**로 정규화합니다. 예약어 검사도 NFC 결과에 적용합니다. 따라서 정규 조합상 같은 식별자는 같은 이름이고, 분해 표기된 예약어도 예약어와 충돌합니다. 원본 철자는 진단·표시에 보존합니다. NFKC 호환 정규화는 적용하지 않습니다. ([UAX #15](https://www.unicode.org/reports/tr15/))
 
-시각적으로 닮은 서로 다른 코드 포인트는 별도 식별자입니다. v0.1은 혼합 스크립트나 Unicode confusable을 오류로 금지하지 않습니다. 진단 또는 편집기 경고는 향후 제안입니다. 예약어 및 prelude 이름은 일반 사용자가 같은 범위에서 다시 선언할 수 없습니다.
+시각적으로 닮은 서로 다른 코드 포인트는 별도 식별자입니다. v0.1은 혼합 스크립트나 Unicode confusable을 오류로 금지하지 않습니다. 진단 또는 편집기 경고는 향후 제안입니다. 예약어는 식별자로 사용할 수 없고 prelude 함수 이름은 다시 선언할 수 없습니다. 지역 값 이름이 함수/prelude 이름과 충돌하는 규칙은 `semantics.md`에 따릅니다.
 
 `시작`은 어휘 예약어가 아닙니다. 프로그램 검증 단계에서 유일한 진입 함수 이름으로 검사합니다. `출력`, `정수로`, `실수로`는 prelude 이름이며 일반 식별자 토큰으로 lexing한 뒤 이름 해석으로 확인합니다.
 
@@ -99,9 +99,28 @@
 
 `>=`는 항상 단일 비교 토큰이고 `>>`, `<<`, 증감 연산자 및 복합 대입 토큰은 v0.1에 없습니다. 타입 매개변수 표기는 `<...>`가 아니라 대괄호 `목록[정수]`를 사용하므로 비교 연산자와 generic 닫는 괄호를 분할할 필요가 없습니다.
 
+## EBNF terminal class
+
+`grammar.ebnf`가 사용하는 lexical terminal은 다음과 같습니다.
+
+```text
+DIGIT      = ASCII "0".."9"
+IDENTIFIER = (XID_Start | "_") (XID_Continue | "_")*
+INTEGER    = DIGIT+
+REAL       = DIGIT+ "." DIGIT+ EXPONENT?
+           | DIGIT+ EXPONENT
+EXPONENT   = ("e" | "E") ("+" | "-")? DIGIT+
+NEWLINE    = CRLF | CR | LF
+EOF        = source 끝
+```
+
+`IDENTIFIER` production에도 `Default_Ignorable_Code_Point`와 bidi 제어 문자 제외를 적용합니다. NFC 정규화 후 예약어와 일치한 철자는 `IDENTIFIER`가 아니라 해당 키워드 토큰입니다. `STRING`은 큰따옴표로 둘러싼 유효한 scalar/escape 순서입니다. `IDENTIFIER`는 원본 철자와 NFC 정규화된 이름을 함께 보존합니다. `INTEGER`, `REAL`, `STRING`에는 sign이 포함되지 않습니다. 어휘 분석기는 숫자로 시작하는 연속 문자열을 숫자 후보 전체로 검사합니다. 유효한 숫자 후보 뒤에 식별자 continue 문자가 바로 붙거나 소수점 뒤 fractional digit가 없으면 두 토큰으로 쪼개지 않고 `GE0002`를 냅니다. 예를 들어 `12이름`, `1e`, `1.`은 잘못된 숫자입니다. `.5`는 숫자 토큰이 아니며 `.` 위치에서 `GE0001`입니다.
+
+키워드 토큰은 완전한 `IDENTIFIER`를 NFC 정규화한 결과가 예약어 표와 정확히 일치할 때만 만들어집니다. 식별자 접두사가 키워드와 같아도 나머지 문자가 유효하면 하나의 `IDENTIFIER`입니다. 연산자/주석 delimiter는 위 표에 열거된 토큰만 인정합니다.
+
 ## 토큰 위치 계약
 
-각 토큰은 원본 UTF-8 파일을 기준으로 다음의 반개구간 시작/끝 offset을 보존합니다.
+각 토큰은 원본 UTF-8 파일을 기준으로 다음의 0 기반, 끝 제외 시작/끝 offset을 보존합니다.
 
 - UTF-8 byte offset: 파일 저장 위치 및 원본 바이트 슬라이스
 - Unicode code point offset: 언어 텍스트의 scalar 순서
