@@ -4,13 +4,18 @@
   "private": true,
   "type": "module",
   "description": "Command-line interface for GEULION.",
+  "bin": {
+    "geulion": "./dist/bin.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "@geulion/compiler": "workspace:*"
   }
