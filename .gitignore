@@ -1,0 +1,11 @@
+# macOS metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Icon?
+
+# Editor backup files
+*.swp
+*.swo
+*~
