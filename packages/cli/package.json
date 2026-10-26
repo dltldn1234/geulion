@@ -1,0 +1,17 @@
+{
+  "name": "@geulion/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Command-line interface for GEULION.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "dependencies": {
+    "@geulion/compiler": "workspace:*"
+  }
+}

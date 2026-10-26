@@ -1,0 +1,21 @@
+{
+  "name": "@geulion/compiler",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Compiler pipeline integration package for GEULION.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "dependencies": {
+    "@geulion/ast": "workspace:*",
+    "@geulion/codegen-js": "workspace:*",
+    "@geulion/lexer": "workspace:*",
+    "@geulion/parser": "workspace:*",
+    "@geulion/semantic": "workspace:*"
+  }
+}
