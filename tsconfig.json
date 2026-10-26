@@ -1,0 +1,12 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/ast" },
+    { "path": "./packages/lexer" },
+    { "path": "./packages/parser" },
+    { "path": "./packages/semantic" },
+    { "path": "./packages/codegen-js" },
+    { "path": "./packages/compiler" },
+    { "path": "./packages/cli" }
+  ]
+}
