@@ -1,0 +1,101 @@
+(* GEULION Language Specification v0.1 — normative grammar.
+   Terminals in quotes are exact NFC keyword spellings or punctuation tokens.
+   NEWLINE is the logical line token defined in lexical-structure.md.
+   Layout exceptions and tokenization are defined by that lexical document. *)
+
+Program              = { Separator },
+                       [ FunctionDeclaration, { TopLevelTail }, { Separator } ],
+                       EOF ;
+TopLevelTail         = Separator, { Separator }, FunctionDeclaration ;
+
+FunctionDeclaration = "함수", Identifier, "(", [ ParameterList ], ")",
+                       "->", Type, FunctionBody ;
+FunctionBody        = Block ;
+
+ParameterList        = Parameter, { ",", Parameter }, [ "," ] ;
+Parameter            = Identifier, ":", Type ;
+
+Block                = "{", { Separator },
+                       [ Statement, { StatementTail }, { Separator } ], "}" ;
+StatementTail        = Separator, { Separator }, Statement ;
+
+Statement            = VariableDeclaration
+                     | Assignment
+                     | IfStatement
+                     | WhileStatement
+                     | ReturnStatement
+                     | BreakStatement
+                     | ContinueStatement
+                     | Block
+                     | CallExpression ;
+
+VariableDeclaration  = ( "상수" | "변수" ), Identifier,
+                       [ ":", Type ], "=", Expression ;
+Assignment           = Identifier, "=", Expression ;
+IfStatement          = "만약", Expression, Block,
+                       [ "아니면", ( IfStatement | Block ) ] ;
+WhileStatement       = "동안", Expression, Block ;
+ReturnStatement      = "반환", [ Expression ] ;
+BreakStatement       = "중단" ;
+ContinueStatement    = "계속" ;
+
+Type                 = PrimitiveType
+                     | "목록", "[", Type, "]"
+                     | "사전", "[", Type, "]"
+                     | "선택", "[", Type, "]"
+                     | "(", Type, ")" ;
+PrimitiveType        = "정수" | "실수" | "문자열" | "불리언" | "없음" ;
+
+Expression           = CoalesceExpression ;
+CoalesceExpression   = OrExpression, [ "??", CoalesceExpression ] ;
+OrExpression         = AndExpression, { "또는", AndExpression } ;
+AndExpression        = EqualityExpression, { "그리고", EqualityExpression } ;
+EqualityExpression   = ComparisonExpression,
+                       [ ( "==" | "!=" ), ComparisonExpression ] ;
+ComparisonExpression = AdditiveExpression,
+                       [ ( "<" | "<=" | ">" | ">=" ), AdditiveExpression ] ;
+AdditiveExpression   = MultiplicativeExpression,
+                       { ( "+" | "-" ), MultiplicativeExpression } ;
+MultiplicativeExpression = UnaryExpression,
+                       { ( "*" | "/" | "%" ), UnaryExpression } ;
+UnaryExpression      = ( "아니다" | "+" | "-" ), UnaryExpression
+                     | PostfixExpression ;
+PostfixExpression    = PrimaryExpression, { IndexSuffix } ;
+IndexSuffix          = "[", Expression, "]" ;
+
+PrimaryExpression    = Literal
+                     | CallExpression
+                     | Identifier
+                     | "(", Expression, ")"
+                     | ListLiteral
+                     | DictionaryLiteral
+                     | "일부", "(", Expression, ")" ;
+CallExpression       = Identifier, "(", [ ArgumentList ], ")" ;
+ArgumentList         = Expression, { ",", Expression }, [ "," ] ;
+ListLiteral          = "[", [ ArgumentList ], "]" ;
+DictionaryLiteral    = "{", [ DictionaryEntry, { ",", DictionaryEntry }, [ "," ] ], "}" ;
+DictionaryEntry      = StringLiteral, ":", Expression ;
+
+Literal              = IntegerLiteral
+                     | RealLiteral
+                     | StringLiteral
+                     | "참"
+                     | "거짓"
+                     | "없음"
+                     | "비어있음" ;
+
+Identifier           = IDENTIFIER ;
+IntegerLiteral       = INTEGER ;
+RealLiteral          = REAL ;
+StringLiteral        = STRING ;
+Separator            = NEWLINE | ";" ;
+EOF                  = end of source ;
+
+(* Lexical precedence, token boundaries, and the terminal token classes are
+   normative in lexical-structure.md. Semantic well-formedness constraints:
+   exactly one start function with signature () -> 없음; no second function
+   named 시작; functions are top-level only; calls name one declared function
+   or prelude function; indexes and conditions are type-checked separately.
+   After an IDENTIFIER, a following '(' selects CallExpression; otherwise the
+   token is an Identifier expression. A dictionary literal is only parsed in
+   an expression position; a block is parsed where Statement requires Block. *)
