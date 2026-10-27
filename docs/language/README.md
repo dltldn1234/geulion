@@ -34,13 +34,15 @@ v0.1은 단일 `.geul` 프로그램, 기본 자료형과 컬렉션, 변수/상�
 
 ## 구현 상태
 
-| 구성 요소                    | 상태            | 확인 범위                                                         |
-| ---------------------------- | --------------- | ----------------------------------------------------------------- |
-| Source 및 위치 정보          | **Implemented** | UTF-8 검증, BOM, LF/CRLF/CR, byte/code point/UTF-16 offset 테스트 |
-| Lexer 및 AST                 | **Implemented** | Unicode 18.0.0 고정 데이터, 어휘 진단, 위치 및 단위 테스트        |
-| Parser 및 프런트엔드 API     | **Implemented** | v0.1 문법 파싱, 구문 진단, 공식 예제 및 통합 테스트               |
-| `tokens` / `parse` CLI       | **Implemented** | 실제 `.geul` 파일, 오류 종료 코드와 출력 검증                     |
-| 이름 해석, 타입 검사         | **Deferred**    | 별도 Phase에서 구현 예정                                          |
-| JavaScript 코드 생성 및 실행 | **Deferred**    | 이번 프런트엔드 Phase 범위 밖                                     |
+| 구성 요소                         | 상태            | 확인 범위                                                           |
+| --------------------------------- | --------------- | ------------------------------------------------------------------- |
+| Source 및 위치 정보               | **Implemented** | UTF-8 검증, BOM, LF/CRLF/CR, byte/code point/UTF-16 offset 테스트   |
+| Lexer 및 AST                      | **Implemented** | Unicode 18.0.0 고정 데이터, 어휘 진단, 위치 및 단위 테스트          |
+| Parser 및 프런트엔드 API          | **Implemented** | v0.1 문법 파싱, 구문 진단, 공식 예제 및 통합 테스트                 |
+| `tokens` / `parse` CLI            | **Implemented** | 실제 `.geul` 파일, 오류 종료 코드와 출력 검증                       |
+| 이름 해석, 타입·제어 흐름 검사    | **Implemented** | Symbol/Scope ID, 정적 타입·추론, 진입점·반환·진단 테스트            |
+| JavaScript 백엔드 및 최소 runtime | **Implemented** | 실제 Node.js 프로세스에서 정수·실수·컬렉션·선택·출력·실행 오류 검증 |
+| `check` / `emit-js` CLI           | **Implemented** | 정적 검사 및 JavaScript 출력, 오류 시 이후 단계 중단                |
+| 정식 `run` / `build` CLI workflow | **Deferred**    | 다음 Phase의 실행 환경 및 개발자 경험 범위                          |
 
-**Implemented**는 현재 코드와 저장소 검증이 확인된 범위만 뜻합니다. 프런트엔드가 타입 검사나 프로그램 실행까지 제공한다는 뜻은 아닙니다.
+**Implemented**는 현재 코드와 저장소 검증이 확인된 범위만 뜻합니다. 생성된 JavaScript는 Node.js로 실행하며, GEULION CLI 자체의 실행·빌드 workflow는 별도입니다. 컴파일러 패키지 경계, 사용법 및 Source Map 지원 범위는 [컴파일러 안내](../compiler.md)에 기록합니다.
