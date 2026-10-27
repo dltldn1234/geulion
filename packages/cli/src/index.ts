@@ -1,13 +1,11 @@
 import { readFileSync } from "node:fs";
-import { tokenizeSource, parseSource } from "@geulion/compiler";
-
-interface CliDiagnostic {
-  readonly code: string;
-  readonly message: string;
-  readonly path: string | null;
-  readonly range: { readonly start: { readonly line: number; readonly column: number } } | null;
-  readonly help: string | null;
-}
+import {
+  tokenizeSource,
+  parseSource,
+  checkSource,
+  compileSource,
+  renderDiagnostics,
+} from "@geulion/compiler";
 
 interface PackageMetadata {
   readonly version: string;
@@ -31,23 +29,29 @@ function printHelp(): void {
       "  geulion --version",
       "  geulion tokens <file.geul>",
       "  geulion parse <file.geul>",
+      "  geulion check <file.geul>",
+      "  geulion emit-js <file.geul>",
       "",
     ].join("\n"),
   );
 }
 
-function printDiagnostics(diagnostics: readonly CliDiagnostic[]): void {
-  for (const diagnostic of diagnostics) {
-    process.stderr.write(`오류 [${diagnostic.code}]: ${diagnostic.message}\n`);
-    if (diagnostic.path !== null && diagnostic.range !== null) {
-      const { line, column } = diagnostic.range.start;
-      process.stderr.write(`\n  ${diagnostic.path}:${line}:${column}\n`);
-    }
-    if (diagnostic.help !== null) process.stderr.write(`도움말: ${diagnostic.help}\n`);
+function printDiagnostics(
+  diagnostics: Parameters<typeof renderDiagnostics>[0],
+  source: Uint8Array,
+  suppressedCount = 0,
+): number {
+  let text: string | undefined;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(source);
+  } catch {
+    /* Invalid encoding diagnostics have positions but no decoded source snippet. */
   }
+  process.stderr.write(renderDiagnostics(diagnostics, text, suppressedCount));
+  return diagnostics.some((d) => d.phase === "internal") ? 2 : 1;
 }
 
-function inspectFile(command: "tokens" | "parse", path: string): number {
+function inspectFile(command: "tokens" | "parse" | "check" | "emit-js", path: string): number {
   let source: Buffer;
   try {
     source = readFileSync(path);
@@ -63,16 +67,28 @@ function inspectFile(command: "tokens" | "parse", path: string): number {
       process.stdout.write(`${JSON.stringify(token)}\n`);
     }
     if (!result.success) {
-      printDiagnostics(result.diagnostics);
-      return 1;
+      return printDiagnostics(result.diagnostics, source, result.suppressedCount);
     }
+    return 0;
+  }
+
+  if (command === "check") {
+    const result = checkSource({ path, source });
+    return result.success
+      ? 0
+      : printDiagnostics(result.diagnostics, source, result.suppressedCount);
+  }
+  if (command === "emit-js") {
+    const result = compileSource({ path, source, target: "node" });
+    if (!result.success)
+      return printDiagnostics(result.diagnostics, source, result.suppressedCount);
+    process.stdout.write(result.code);
     return 0;
   }
 
   const result = parseSource({ path, source });
   if (!result.success) {
-    printDiagnostics(result.diagnostics);
-    return 1;
+    return printDiagnostics(result.diagnostics, source, result.suppressedCount);
   }
   process.stdout.write(`${JSON.stringify({ success: true, ast: result.ast }, null, 2)}\n`);
   return 0;
@@ -91,11 +107,17 @@ export function runCli(args: readonly string[]): number {
     return 0;
   }
 
-  if ((command === "tokens" || command === "parse") && args.length === 2) {
+  if (
+    (command === "tokens" || command === "parse" || command === "check" || command === "emit-js") &&
+    args.length === 2
+  ) {
     return inspectFile(command, args[1] ?? "");
   }
 
-  if ((command === "tokens" || command === "parse") && args.length !== 2) {
+  if (
+    (command === "tokens" || command === "parse" || command === "check" || command === "emit-js") &&
+    args.length !== 2
+  ) {
     process.stderr.write(`사용법: geulion ${command} <file.geul>\n`);
     return 2;
   }
