@@ -4,7 +4,7 @@ GEULION(글리온)은 한국어 사용자가 읽고 작성할 수 있는 정적 
 
 ## 상태
 
-Language Specification v0.1의 문서 규칙은 **Specified**입니다. 정상/비정상 적합성 예제와 Lexer/Parser 계약을 포함합니다. 명세가 작성되었다는 뜻이며 Lexer, Parser 또는 Compiler가 구현되었다는 뜻은 아닙니다.
+Language Specification v0.1의 규칙은 **Specified**입니다. 명세 문서의 상태와 구현 상태는 별도로 관리합니다.
 
 문서의 기능 상태는 다음 뜻으로 사용합니다.
 
@@ -32,4 +32,15 @@ Language Specification v0.1의 문서 규칙은 **Specified**입니다. 정상/�
 
 v0.1은 단일 `.geul` 프로그램, 기본 자료형과 컬렉션, 변수/상수, 함수, 조건문, 반복문, 기본 스코프, 정적 타입 검사와 오류 진단을 우선합니다. JavaScript는 초기 출력 백엔드이며 언어 의미론의 기준이 아닙니다.
 
-이 저장소의 컴파일러 패키지는 구조만 마련되어 있습니다. 이 명세는 언어 설계를 기록하며, Lexer·Parser·Compiler 또는 실행 동작이 구현되었다는 뜻이 아닙니다.
+## 구현 상태
+
+| 구성 요소                    | 상태            | 확인 범위                                                         |
+| ---------------------------- | --------------- | ----------------------------------------------------------------- |
+| Source 및 위치 정보          | **Implemented** | UTF-8 검증, BOM, LF/CRLF/CR, byte/code point/UTF-16 offset 테스트 |
+| Lexer 및 AST                 | **Implemented** | Unicode 18.0.0 고정 데이터, 어휘 진단, 위치 및 단위 테스트        |
+| Parser 및 프런트엔드 API     | **Implemented** | v0.1 문법 파싱, 구문 진단, 공식 예제 및 통합 테스트               |
+| `tokens` / `parse` CLI       | **Implemented** | 실제 `.geul` 파일, 오류 종료 코드와 출력 검증                     |
+| 이름 해석, 타입 검사         | **Deferred**    | 별도 Phase에서 구현 예정                                          |
+| JavaScript 코드 생성 및 실행 | **Deferred**    | 이번 프런트엔드 Phase 범위 밖                                     |
+
+**Implemented**는 현재 코드와 저장소 검증이 확인된 범위만 뜻합니다. 프런트엔드가 타입 검사나 프로그램 실행까지 제공한다는 뜻은 아닙니다.
