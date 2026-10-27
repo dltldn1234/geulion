@@ -7,12 +7,14 @@ export interface ParseSourceSuccess {
   readonly tokens: readonly Token[];
   readonly ast: ProgramNode;
   readonly diagnostics: readonly [];
+  readonly suppressedCount: 0;
 }
 
 export interface ParseSourceFailure {
   readonly success: false;
   readonly tokens: readonly Token[];
   readonly diagnostics: readonly Diagnostic[];
+  readonly suppressedCount: number;
 }
 
 export type ParseSourceResult = ParseSourceSuccess | ParseSourceFailure;
@@ -30,13 +32,29 @@ export function parseSource(input: {
 }): ParseSourceResult {
   const lexical = tokenizeSource(input);
   if (!lexical.success) {
-    return { success: false, tokens: lexical.tokens, diagnostics: lexical.diagnostics };
+    return {
+      success: false,
+      tokens: lexical.tokens,
+      diagnostics: lexical.diagnostics,
+      suppressedCount: lexical.suppressedCount,
+    };
   }
 
   const parsed = parseTokens(lexical.tokens, input.path);
   if (!parsed.success) {
-    return { success: false, tokens: lexical.tokens, diagnostics: parsed.diagnostics };
+    return {
+      success: false,
+      tokens: lexical.tokens,
+      diagnostics: parsed.diagnostics,
+      suppressedCount: 0,
+    };
   }
 
-  return { success: true, tokens: lexical.tokens, ast: parsed.ast, diagnostics: [] };
+  return {
+    success: true,
+    tokens: lexical.tokens,
+    ast: parsed.ast,
+    diagnostics: [],
+    suppressedCount: 0,
+  };
 }
