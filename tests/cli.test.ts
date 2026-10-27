@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -31,6 +31,8 @@ describe("GEULION CLI", () => {
     expect(result.stdout).toContain("geulion --version");
     expect(result.stdout).toContain("geulion tokens <file.geul>");
     expect(result.stdout).toContain("geulion parse <file.geul>");
+    expect(result.stdout).toContain("geulion check <file.geul>");
+    expect(result.stdout).toContain("geulion emit-js <file.geul>");
   });
 
   it("prints the package version", () => {
@@ -86,5 +88,52 @@ describe("GEULION CLI", () => {
     const missing = runCli("parse", join(tmpdir(), "does-not-exist.geul"));
     expect(missing.status).toBe(2);
     expect(missing.stderr).toContain("파일을 읽을 수 없습니다");
+  });
+
+  it("checks a valid source and emits executable JavaScript on stdout", () => {
+    withSource(readFileSync(new URL("./fixtures/compiler-smoke.geul", import.meta.url)), (path) => {
+      const checked = runCli("check", path);
+      expect(checked.status).toBe(0);
+      expect(checked.stdout).toBe("");
+      expect(checked.stderr).toBe("");
+      const emitted = runCli("emit-js", path);
+      expect(emitted.status).toBe(0);
+      expect(emitted.stderr).toBe("");
+      const executed = spawnSync(process.execPath, ["--input-type=module", "-"], {
+        input: emitted.stdout,
+        encoding: "utf8",
+        timeout: 5000,
+      });
+      expect(executed.status).toBe(0);
+      expect(executed.stdout).toBe("안녕하세요, GEULION\n42\n");
+      expect(executed.stderr).toBe("");
+    });
+  });
+
+  it.each(["check", "emit-js"])("reports static errors without output code for %s", (command) => {
+    withSource(
+      new TextEncoder().encode('함수 시작() -> 없음 { 상수 값: 정수 = "문자열" }'),
+      (path) => {
+        const result = runCli(command, path);
+        expect(result.status).toBe(1);
+        expect(result.stdout).toBe("");
+        expect(result.stderr).toContain("GE3001");
+        expect(result.stderr).toContain("타입 검사");
+        expect(result.stderr).toContain("^");
+        expect(result.stderr).toContain("도움말:");
+      },
+    );
+    withSource(Uint8Array.from([0xff]), (path) => {
+      const result = runCli(command, path);
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toContain("GE0001");
+    });
+  });
+
+  it("validates new command usage and keeps build unsupported", () => {
+    expect(runCli("check").status).toBe(2);
+    expect(runCli("emit-js").status).toBe(2);
+    expect(runCli("build").status).toBe(1);
   });
 });
