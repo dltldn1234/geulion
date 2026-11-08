@@ -11,6 +11,10 @@ function runCli(...args: string[]) {
   return spawnSync(process.execPath, [cliEntry, ...args], { encoding: "utf8" });
 }
 
+function runCliAt(directory: string, ...args: string[]) {
+  return spawnSync(process.execPath, [cliEntry, ...args], { cwd: directory, encoding: "utf8" });
+}
+
 function withSource<T>(bytes: Uint8Array, body: (path: string) => T): T {
   const directory = mkdtempSync(join(tmpdir(), "geulion-cli-"));
   const path = join(directory, "main.geul");
@@ -33,6 +37,8 @@ describe("GEULION CLI", () => {
     expect(result.stdout).toContain("geulion parse <file.geul>");
     expect(result.stdout).toContain("geulion check <file.geul>");
     expect(result.stdout).toContain("geulion emit-js <file.geul>");
+    expect(result.stdout).toContain("geulion run <file.geul>");
+    expect(result.stdout).toContain("geulion build <file.geul> [--out-dir <directory>]");
   });
 
   it("prints the package version", () => {
@@ -43,10 +49,10 @@ describe("GEULION CLI", () => {
   });
 
   it("rejects unsupported commands with a nonzero status", () => {
-    const result = runCli("run");
+    const result = runCli("unknown");
 
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain("Unknown command: run");
+    expect(result.stderr).toContain("Unknown command: unknown");
     expect(result.stderr).toContain("geulion --help");
   });
 
@@ -110,6 +116,73 @@ describe("GEULION CLI", () => {
     });
   });
 
+  it("runs GEULION source in Node and preserves output and runtime exit status", () => {
+    withSource(readFileSync(new URL("./fixtures/compiler-smoke.geul", import.meta.url)), (path) => {
+      const result = runCli("run", path);
+      expect(result.status).toBe(0);
+      expect(result.stdout).toBe("안녕하세요, GEULION\n42\n");
+      expect(result.stderr).toBe("");
+    });
+
+    withSource(new TextEncoder().encode("함수 시작() -> 없음 { 출력(1 / 0) }"), (path) => {
+      const result = runCli("run", path);
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toContain("GE4002");
+      expect(result.stderr).toContain(path);
+    });
+
+    expect(runCli("run", join(tmpdir(), "missing.geul")).status).toBe(2);
+  });
+
+  it("builds a standalone module into a Korean path containing spaces", () => {
+    const directory = mkdtempSync(join(tmpdir(), "글리온 CLI "));
+    const sourcePath = join(directory, "게임 파일.geul");
+    const outputDirectory = join(directory, "배포 결과");
+    writeFileSync(
+      sourcePath,
+      readFileSync(new URL("./fixtures/compiler-smoke.geul", import.meta.url)),
+    );
+    try {
+      const built = runCli("build", sourcePath, "--out-dir", outputDirectory);
+      expect(built.status).toBe(0);
+      expect(built.stderr).toBe("");
+      expect(built.stdout).toContain("빌드 완료:");
+
+      const artifact = join(outputDirectory, "게임 파일.mjs");
+      const executed = spawnSync(process.execPath, ["--enable-source-maps", artifact], {
+        encoding: "utf8",
+        timeout: 5000,
+      });
+      expect(executed.status).toBe(0);
+      expect(executed.stdout).toBe("안녕하세요, GEULION\n42\n");
+      expect(executed.stderr).toBe("");
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("builds to dist by default and rejects compile failures", () => {
+    const directory = mkdtempSync(join(tmpdir(), "geulion-build-"));
+    const sourcePath = join(directory, "main.geul");
+    writeFileSync(sourcePath, "함수 시작() -> 없음 { 출력(42) }");
+    try {
+      const built = runCliAt(directory, "build", sourcePath);
+      expect(built.status).toBe(0);
+      const artifact = join(directory, "dist", "main.mjs");
+      const executed = spawnSync(process.execPath, [artifact], { encoding: "utf8", timeout: 5000 });
+      expect(executed.status).toBe(0);
+      expect(executed.stdout).toBe("42\n");
+
+      writeFileSync(sourcePath, '함수 시작() -> 없음 { 상수 값: 정수 = "문자열" }');
+      const failed = runCliAt(directory, "build", sourcePath);
+      expect(failed.status).toBe(1);
+      expect(failed.stderr).toContain("GE3001");
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it.each(["check", "emit-js"])("reports static errors without output code for %s", (command) => {
     withSource(
       new TextEncoder().encode('함수 시작() -> 없음 { 상수 값: 정수 = "문자열" }'),
@@ -131,9 +204,12 @@ describe("GEULION CLI", () => {
     });
   });
 
-  it("validates new command usage and keeps build unsupported", () => {
+  it("validates run and build command usage", () => {
     expect(runCli("check").status).toBe(2);
     expect(runCli("emit-js").status).toBe(2);
-    expect(runCli("build").status).toBe(1);
+    expect(runCli("run").status).toBe(2);
+    expect(runCli("build").status).toBe(2);
+    expect(runCli("build", "main.geul", "--out-dir").status).toBe(2);
+    expect(runCli("build", "main.geul", "--wrong", "dist").status).toBe(2);
   });
 });

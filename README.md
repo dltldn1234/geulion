@@ -26,7 +26,16 @@ pnpm exec geulion emit-js main.geul > main.mjs
 node main.mjs
 ```
 
-`check`는 정적 검사만 수행하고, `emit-js`는 JavaScript를 표준 출력으로 내보냅니다. 진단은 표준 오류로 출력합니다. `--help`, `--version`, `tokens`, `parse`도 지원합니다. `geulion run`과 `geulion build` 명령은 후속 Phase의 개발 범위입니다.
+직접 실행하거나 독립 실행 파일을 만들려면 다음 명령을 사용합니다.
+
+```bash
+pnpm exec geulion run main.geul
+pnpm exec geulion build main.geul
+pnpm exec geulion build main.geul --out-dir dist
+node dist/main.mjs
+```
+
+`check`는 정적 검사만 수행하고, `emit-js`는 JavaScript를 표준 출력으로 내보냅니다. `run`은 생성한 JavaScript를 현재 Node.js 실행 파일로 실행하며 프로그램의 stdout, stderr, 종료 코드를 전달합니다. `build`는 compiler runtime helper가 포함된 독립 `.mjs` 파일을 `dist/`에 생성합니다. 컴파일 진단과 CLI 오류는 표준 오류로 출력합니다. `--help`, `--version`, `tokens`, `parse`도 지원합니다.
 
 개발 작업은 GitHub Issue에서 목표와 완료 조건을 정한 뒤 진행합니다. 자세한 참여 방법은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.
 
