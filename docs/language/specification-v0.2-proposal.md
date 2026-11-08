@@ -1,6 +1,6 @@
 # GEULION Language Specification v0.2 Proposal — Portable String Utilities
 
-**Status: Proposed.** This document is a review proposal, not a normative language specification and not an implementation claim. It does not change Language Specification v0.1. The proposal is tracked by [Issue #33](https://github.com/dltldn1234/geulion/issues/33); API and compatibility decisions are tracked by [Issue #35](https://github.com/dltldn1234/geulion/issues/35).
+**Status: Accepted for implementation; not yet a normative specification.** The API and compatibility decisions were accepted through [Issue #35](https://github.com/dltldn1234/geulion/issues/35). Implementation is tracked separately by [Issue #37](https://github.com/dltldn1234/geulion/issues/37). This proposal does not change Language Specification v0.1.
 
 ## Purpose and boundaries
 
@@ -30,7 +30,7 @@ For all four functions, strings are compared exactly as stored: no NFC/NFD norma
 }
 ```
 
-These examples describe the proposal only. They are not v0.1 conformance examples and must not be treated as runnable until a later implementation issue lands.
+These examples require `--language-version 0.2`. They are not v0.1 conformance examples.
 
 ## Resolved API and compatibility decisions (proposed)
 
@@ -40,11 +40,11 @@ These examples describe the proposal only. They are not v0.1 conformance example
 - v0.1 remains the default language version. A later compiler change must require an explicit `--language-version 0.2` opt-in for these declarations. The option applies to semantic compilation commands (`check`, `emit-js`, `run`, and `build`); tokenization and parsing remain version-neutral for this proposal because it changes neither tokens nor grammar. No source-level version directive is introduced here.
 - A program compiled with v0.2 is represented in its output as ordinary generated code; executing a standalone build does not require the version flag.
 
-These are proposal decisions, not implemented compiler behavior. A separate implementation issue must add the opt-in and verify that all commands preserve their v0.1 default.
+These decisions define the accepted implementation target. The implementation status is recorded separately from this design document.
 
 ## Name resolution and diagnostics (proposed)
 
-The declarations would be reserved prelude names, resolved like the current prelude functions. Redeclaration would produce the existing duplicate/prelude-name diagnostic. Calls with incorrect arity or non-string arguments would use the existing static name-resolution and type diagnostics; this proposal introduces no runtime failure or new diagnostic code.
+The declarations are reserved prelude names in v0.2, resolved like the current prelude functions. Redeclaration produces the existing duplicate/prelude-name diagnostic. Calls with incorrect arity or non-string arguments use the existing static name-resolution and type diagnostics; these functions introduce no runtime failure or new diagnostic code.
 
 ## Versioning and precedence
 

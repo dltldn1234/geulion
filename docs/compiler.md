@@ -27,7 +27,9 @@ pnpm build
 pnpm exec geulion tokens main.geul
 pnpm exec geulion parse main.geul
 pnpm exec geulion check main.geul
+pnpm exec geulion check main.geul --language-version 0.2
 pnpm exec geulion emit-js main.geul > main.mjs
+pnpm exec geulion run main.geul --language-version 0.2
 node --enable-source-maps main.mjs
 pnpm exec geulion run main.geul
 pnpm exec geulion build main.geul
@@ -40,6 +42,8 @@ node --enable-source-maps dist/main.mjs
 `run`은 `compileSource`로 검사·생성한 ES Module을 임시 디렉터리에 기록하고 현재 `process.execPath`의 Node.js 프로세스로 실행합니다. 자식 프로세스는 부모와 같은 stdout/stderr를 사용하며 종료 코드를 CLI에 전달합니다. 임시 디렉터리는 실행 성공, 실패, 예외 경로에서 정리합니다. 실행 중 무한 루프 등으로 프로그램이 끝나지 않으면 `run`도 계속 기다립니다.
 
 `build`는 기본적으로 `dist/<소스 파일명>.mjs`를 생성합니다. `--out-dir`로 출력 디렉터리를 지정할 수 있습니다. 결과 파일에는 runtime helper와 inline source map이 포함되어 있어 GEULION 컴파일러 패키지 없이 Node.js에서 실행할 수 있습니다. 출력 디렉터리가 없으면 만듭니다. 대상 파일과 같은 이름의 기존 `.mjs` 파일은 덮어씁니다.
+
+`check`, `emit-js`, `run`, `build`는 기본 언어 버전 v0.1을 사용합니다. `--language-version 0.2`를 지정하면 문자열 표준 함수 `문자열길이`, `문자열포함`, `문자열시작`, `문자열끝`을 사용할 수 있습니다. 길이는 Unicode scalar 수를 반환하며 검색과 접두/접미 비교는 정규화하지 않은 정확한 scalar 열을 사용합니다. `tokens`와 `parse`는 문법이 버전 간 같으므로 이 옵션을 받지 않습니다. 생성된 JavaScript는 이미 선택한 의미를 포함하므로 실행 때 버전 옵션이 필요하지 않습니다.
 
 생성된 `.mjs`에는 runtime helper가 포함되며 Node.js 기본 모듈만 사용합니다. 실행 시 GEULION 패키지 설치가 필요하지 않습니다. 진입 함수는 생성 코드에서 정확히 한 번 호출합니다.
 
