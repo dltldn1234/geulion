@@ -11,7 +11,7 @@
 - Initial cumulative commits: 58
 - Current cumulative commits on `origin/main`: 65
 - New commits reachable from main since baseline: 7 (five PR commits plus two Merge Commits)
-- Local unmerged commits: 1 on Issue #35 (`72f3e42`, proposal design decisions)
+- Local unmerged commits: 3 on Issue #35 (design decision, progress tracking, and this final status update)
 - Remaining to minimum 300: 235
 - Remaining to primary 400: 335
 - Remaining to extended 500: 435
