@@ -108,6 +108,14 @@ export function generateJavaScript(
             return `_g.toInteger(${args}, ${span(node.span)})`;
           case "실수로":
             return `_g.toReal(${args})`;
+          case "문자열길이":
+            return `_g.stringLength(${args})`;
+          case "문자열포함":
+            return `_g.stringContains(${args})`;
+          case "문자열시작":
+            return `_g.stringStarts(${args})`;
+          case "문자열끝":
+            return `_g.stringEnds(${args})`;
           default:
             throw new Error("Unknown prelude symbol");
         }

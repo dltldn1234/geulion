@@ -44,6 +44,7 @@ v0.1은 단일 `.geul` 프로그램, 기본 자료형과 컬렉션, 변수/상�
 | 이름 해석, 타입·제어 흐름 검사    | **Implemented** | Symbol/Scope ID, 정적 타입·추론, 진입점·반환·진단 테스트            |
 | JavaScript 백엔드 및 최소 runtime | **Implemented** | 실제 Node.js 프로세스에서 정수·실수·컬렉션·선택·출력·실행 오류 검증 |
 | `check` / `emit-js` CLI           | **Implemented** | 정적 검사 및 JavaScript 출력, 오류 시 이후 단계 중단                |
-| 정식 `run` / `build` CLI workflow | **Deferred**    | 다음 Phase의 실행 환경 및 개발자 경험 범위                          |
+| 정식 `run` / `build` CLI workflow | **Implemented** | Node.js 자식 프로세스 실행, 단독 빌드 산출물과 CLI 통합 테스트      |
+| v0.2 언어 버전과 문자열 함수      | **Implemented** | 명시적 버전 선택, 네 문자열 함수, v0.1 기본값 회귀 검증             |
 
 **Implemented**는 현재 코드와 저장소 검증이 확인된 범위만 뜻합니다. 생성된 JavaScript는 Node.js로 실행하며, GEULION CLI 자체의 실행·빌드 workflow는 별도입니다. 컴파일러 패키지 경계, 사용법 및 Source Map 지원 범위는 [컴파일러 안내](../compiler.md)에 기록합니다.

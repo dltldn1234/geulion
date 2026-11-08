@@ -9,11 +9,12 @@ import {
   type ExpressionNode,
   type StatementNode,
 } from "@geulion/ast";
-import { typeFromNode, type GeulType, UNIT, INTEGER, REAL } from "./types.js";
+import { typeFromNode, type GeulType, UNIT, INTEGER, REAL, STRING, BOOLEAN } from "./types.js";
 import { limitDiagnostics } from "./diagnostics.js";
 
 export type SymbolId = number;
 export type ScopeId = number;
+export type LanguageVersion = "0.1" | "0.2";
 
 export interface FunctionSignature {
   /** A null parameter is the single built-in polymorphic 출력 argument. */
@@ -65,7 +66,11 @@ export interface ResolutionResult {
   readonly suppressedCount: number;
 }
 
-export function resolveProgram(ast: ProgramNode, path = "<stdin>"): ResolutionResult {
+export function resolveProgram(
+  ast: ProgramNode,
+  path = "<stdin>",
+  languageVersion: LanguageVersion = "0.1",
+): ResolutionResult {
   const symbols = new Map<SymbolId, SemanticSymbol>();
   const scopes = new Map<ScopeId, LexicalScope>();
   const references = new Map<IdentifierName, SymbolId>();
@@ -98,11 +103,20 @@ export function resolveProgram(ast: ProgramNode, path = "<stdin>"): ResolutionRe
     );
   }
 
-  for (const [name, parameters, returnType] of [
+  const prelude: [string, readonly (GeulType | null)[], GeulType][] = [
     ["출력", [null], UNIT],
     ["정수로", [REAL], INTEGER],
     ["실수로", [INTEGER], REAL],
-  ] as const) {
+  ];
+  if (languageVersion === "0.2") {
+    prelude.push(
+      ["문자열길이", [STRING], INTEGER],
+      ["문자열포함", [STRING, STRING], BOOLEAN],
+      ["문자열시작", [STRING, STRING], BOOLEAN],
+      ["문자열끝", [STRING, STRING], BOOLEAN],
+    );
+  }
+  for (const [name, parameters, returnType] of prelude) {
     const symbol: FunctionSymbol = {
       id: symbolId++,
       name,

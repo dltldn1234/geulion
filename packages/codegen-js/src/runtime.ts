@@ -241,6 +241,34 @@ export function createRuntime(host: RuntimeHost, path: string) {
     return Number(value);
   }
 
+  function stringLength(value: string): bigint {
+    return BigInt([...value].length);
+  }
+
+  function stringContains(value: string, needle: string): boolean {
+    const valueScalars = [...value];
+    const needleScalars = [...needle];
+    if (needleScalars.length === 0) return true;
+    return valueScalars.some((_, start) =>
+      needleScalars.every((scalar, offset) => valueScalars[start + offset] === scalar),
+    );
+  }
+
+  function stringStarts(value: string, prefix: string): boolean {
+    const valueScalars = [...value];
+    const prefixScalars = [...prefix];
+    return prefixScalars.every((scalar, index) => valueScalars[index] === scalar);
+  }
+
+  function stringEnds(value: string, suffix: string): boolean {
+    const valueScalars = [...value];
+    const suffixScalars = [...suffix];
+    const start = valueScalars.length - suffixScalars.length;
+    return (
+      start >= 0 && suffixScalars.every((scalar, index) => valueScalars[start + index] === scalar)
+    );
+  }
+
   function run(entry: () => unknown): 0 | 1 | 2 {
     try {
       entry();
@@ -282,6 +310,10 @@ export function createRuntime(host: RuntimeHost, path: string) {
     output,
     toInteger,
     toReal,
+    stringLength,
+    stringContains,
+    stringStarts,
+    stringEnds,
     run,
   };
 }

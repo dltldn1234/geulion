@@ -1,11 +1,14 @@
 import { createDiagnostic, SourceFile, type Diagnostic } from "@geulion/ast";
-import { analyzeProgram, type AnalysisResult } from "@geulion/semantic";
+import { analyzeProgram, type AnalysisResult, type LanguageVersion } from "@geulion/semantic";
 import { generateJavaScript } from "@geulion/codegen-js";
 import { parseSource } from "./frontend.js";
+
+export type { LanguageVersion } from "@geulion/semantic";
 
 export interface SourceInput {
   readonly path: string;
   readonly source: Uint8Array;
+  readonly languageVersion?: LanguageVersion;
 }
 
 export interface CompilationFailure {
@@ -40,7 +43,7 @@ export function checkSource(input: SourceInput): AnalysisResult {
         diagnostics: parsed.diagnostics,
         suppressedCount: parsed.suppressedCount,
       };
-    return analyzeProgram(parsed.ast, input.path);
+    return analyzeProgram(parsed.ast, input.path, input.languageVersion ?? "0.1");
   } catch {
     return internalFailure();
   }

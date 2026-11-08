@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -36,7 +36,8 @@ describe("GEULION CLI", () => {
     expect(result.stdout).toContain("geulion tokens <file.geul>");
     expect(result.stdout).toContain("geulion parse <file.geul>");
     expect(result.stdout).toContain("geulion check <file.geul>");
-    expect(result.stdout).toContain("geulion emit-js <file.geul>");
+    expect(result.stdout).toContain("geulion check <file.geul> [--language-version 0.2]");
+    expect(result.stdout).toContain("geulion emit-js <file.geul> [--language-version 0.2]");
     expect(result.stdout).toContain("geulion run <file.geul>");
     expect(result.stdout).toContain("geulion build <file.geul> [--out-dir <directory>]");
   });
@@ -113,6 +114,57 @@ describe("GEULION CLI", () => {
       expect(executed.status).toBe(0);
       expect(executed.stdout).toBe("안녕하세요, GEULION\n42\n");
       expect(executed.stderr).toBe("");
+    });
+  });
+
+  it("gates v0.2 string utilities behind an explicit language version", () => {
+    const source = `함수 시작() -> 없음 {
+    출력(문자열길이("가😀é"))
+    출력(문자열포함("가나다", "나다"))
+    출력(문자열시작("가나다", "가"))
+    출력(문자열끝("가나다", "다"))
+    출력(문자열포함("가", ""))
+    출력(문자열시작("가", "가나"))
+    출력(문자열끝("가", "나"))
+}`;
+    withSource(new TextEncoder().encode(source), (path) => {
+      const defaultVersion = runCli("check", path);
+      expect(defaultVersion.status).toBe(1);
+      expect(defaultVersion.stderr).toContain("GE2001");
+
+      const checked = runCli("check", path, "--language-version", "0.2");
+      expect(checked.status).toBe(0);
+      expect(checked.stderr).toBe("");
+
+      const run = runCli("run", path, "--language-version", "0.2");
+      expect(run.status).toBe(0);
+      expect(run.stdout).toBe("4\n참\n참\n참\n참\n거짓\n거짓\n");
+      expect(run.stderr).toBe("");
+
+      const emitted = runCli("emit-js", path, "--language-version", "0.2");
+      expect(emitted.status).toBe(0);
+      const executed = spawnSync(process.execPath, ["--input-type=module", "-"], {
+        input: emitted.stdout,
+        encoding: "utf8",
+      });
+      expect(executed.status).toBe(0);
+      expect(executed.stdout).toBe(run.stdout);
+
+      const outputDirectory = join(dirname(path), "v02-output");
+      const built = runCli(
+        "build",
+        path,
+        "--language-version",
+        "0.2",
+        "--out-dir",
+        outputDirectory,
+      );
+      expect(built.status).toBe(0);
+      const artifact = spawnSync(process.execPath, [join(outputDirectory, "main.mjs")], {
+        encoding: "utf8",
+      });
+      expect(artifact.status).toBe(0);
+      expect(artifact.stdout).toBe(run.stdout);
     });
   });
 
@@ -211,5 +263,8 @@ describe("GEULION CLI", () => {
     expect(runCli("build").status).toBe(2);
     expect(runCli("build", "main.geul", "--out-dir").status).toBe(2);
     expect(runCli("build", "main.geul", "--wrong", "dist").status).toBe(2);
+    expect(runCli("check", "main.geul", "--language-version").status).toBe(2);
+    expect(runCli("check", "main.geul", "--language-version", "0.3").status).toBe(2);
+    expect(runCli("tokens", "main.geul", "--language-version", "0.2").status).toBe(2);
   });
 });
