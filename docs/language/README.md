@@ -18,6 +18,7 @@ Language Specification v0.1의 규칙은 **Specified**입니다. 명세 문서�
 ## 문서 구성
 
 - `specification-v0.1.md` — 버전별 규범 명세, 문서 우선순위, Lexer/Parser 경계
+- `specification-v0.2-proposal.md` — 문자열 표준 함수에 대한 비규범 설계 제안 (Issue #33)
 - `design-decisions.md` — 설계 원칙과 결정 근거
 - `lexical-structure.md` — 문자, 식별자, 리터럴, 주석, 토큰과 위치 규칙
 - `grammar.ebnf` — 형식 문법과 표현식 우선순위
