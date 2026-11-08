@@ -18,8 +18,12 @@ function exampleSource(id: string): string {
   return source;
 }
 
-function input(path: string, source: string) {
-  return { path, source: new TextEncoder().encode(source) };
+function input(path: string, source: string, languageVersion?: "0.1" | "0.2") {
+  return {
+    path,
+    source: new TextEncoder().encode(source),
+    ...(languageVersion === undefined ? {} : { languageVersion }),
+  };
 }
 
 describe("compiler integration and official conformance", () => {
@@ -62,6 +66,29 @@ describe("compiler integration and official conformance", () => {
     expect(executed.stderr).toBe("");
   });
 
+  it("checks, compiles, and executes the official v0.2 string example", () => {
+    const id = "P-101";
+    const source = exampleSource(id);
+    const sourceInput = input(`${id}.geul`, source, "0.2");
+    const checked = checkSource(sourceInput);
+    expect(checked.success).toBe(true);
+
+    const compiled = compileSource({ ...sourceInput, target: "node" });
+    expect(compiled.success).toBe(true);
+    if (!compiled.success) return;
+    expect(compiled.diagnostics).toEqual([]);
+
+    const executed = spawnSync(process.execPath, ["--input-type=module", "-"], {
+      input: compiled.code,
+      encoding: "utf8",
+      timeout: 5_000,
+    });
+    expect(executed.error).toBeUndefined();
+    expect(executed.status, executed.stderr).toBe(0);
+    expect(executed.stdout).toBe("4\n거짓\n참\n참\n참\n거짓\n");
+    expect(executed.stderr).toBe("");
+  });
+
   it.each([
     ["N-001", "GE2003", "resolve"],
     ["N-002", "GE3001", "type"],
@@ -71,6 +98,7 @@ describe("compiler integration and official conformance", () => {
     ["N-006", "GE3002", "type"],
     ["N-007", "GE3005", "type"],
     ["N-008", "GE1001", "parse"],
+    ["N-009", "GE2001", "resolve"],
   ])("rejects official %s with %s and emits no JavaScript", (id, code, phase) => {
     const sourceInput = input(`${id}.geul`, exampleSource(id));
     const checked = checkSource(sourceInput);
