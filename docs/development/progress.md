@@ -2,21 +2,21 @@
 
 ## Current status
 
-- Current Phase: 6 — Standard Library & Language Evolution (proposal underway)
-- Current Issue: [#33 — Define the v0.2 standard library boundary](https://github.com/dltldn1234/geulion/issues/33)
-- Working branch: `33-docs/v02-stdlib-boundary`
+- Current Phase: 6 — Standard Library & Language Evolution (proposal review)
+- Current Issue: [#35 — Resolve v0.2 string utility naming and version selection](https://github.com/dltldn1234/geulion/issues/35)
+- Working branch: `35-docs/v02-finalization`
 - Initial baseline SHA: `afc1b41`
 - Initial main commit count: 58 (`git fetch origin` then `git rev-list --count origin/main`)
-- Latest main SHA: `8f72dad`
+- Latest main SHA: `6518b9c`
 - Initial cumulative commits: 58
-- Current cumulative commits on `origin/main`: 62
-- New commits reachable from main since baseline: 4 (three PR commits plus Merge Commit)
-- Local unmerged commits: 1 on the Issue #33 branch (`cef612b`, proposal and index entry)
-- Remaining to minimum 300: 238
-- Remaining to primary 400: 338
-- Remaining to extended 500: 438
-- Completed PR: [#32](https://github.com/dltldn1234/geulion/pull/32), merged as Merge Commit `8f72dad`; latest-head CI passed (workflow run `42505588424`)
-- Current Issue #33 branch has no PR or CI result yet. The proposal commit passed `pnpm format:check` and `git diff --check`.
+- Current cumulative commits on `origin/main`: 65
+- New commits reachable from main since baseline: 7 (five PR commits plus two Merge Commits)
+- Local unmerged commits: 3 on Issue #35 (design decision, progress tracking, and this final status update)
+- Remaining to minimum 300: 235
+- Remaining to primary 400: 335
+- Remaining to extended 500: 435
+- Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed.
+- Current Issue #35 branch has no PR or CI result yet; proposal formatting and diff checks pass.
 
 ## Completed
 
@@ -32,6 +32,9 @@
 - Branch `31-feat/runtime-cli` was the head of PR #32 and is merged.
 - Phase 6 issue #33 tracks a versioned proposal for pure portable string utilities; the proposal is not normative and makes no v0.1 implementation claim.
 - Proposal commit: `cef612b` (`📝 docs: propose portable v0.2 string utilities (#33)`).
+- PR #34 merged two branch commits plus one Merge Commit; proposal remains Proposed until its API naming and version-selection questions are resolved.
+- Issue #35 resolves the proposed API names and argument order, Unicode scalar counting/comparison, and explicit CLI opt-in (`--language-version 0.2`) while keeping v0.1 as default. These are proposal decisions, not implementation.
+- Design decision commit: `72f3e42` (`📝 docs: resolve v0.2 string API proposal decisions (#35)`).
 
 ## Verification
 
@@ -42,16 +45,17 @@
 - `pnpm test`: passed, 13 test files / 166 tests.
 - `git diff --check`: passed.
 - Actual process-level run and standalone build execution are covered by the CLI tests above.
+- Phase 6 docs proposal: `pnpm format:check` passed; `git diff --check` passed; PR #34 CI passed lint, format, typecheck, test, and build.
 
 ## Known blockers
 
-- The GitHub connector denied issue and pull-request creation with HTTP 403. Issue #31 and PR #32 were created through the authenticated browser. Issue #33 was also created through the browser. The required initial `git fetch origin` and baseline count succeeded; later count verification read the already updated `origin/main` ref.
+- GitHub connector writes and branch-protection reads return HTTP 403. Issue/PR creation and regular merges were completed in the authenticated browser. PR #34 showed all checks passed, no conflicts, and an enabled merge action; its merge was accepted by GitHub. The initial baseline fetch and count succeeded, and `origin/main` was fetched again after PR #34.
 
 ## Next
 
-1. Review the v0.2 string-utility proposal and refine the API wording if needed.
-2. Commit the updated progress record and open a PR for Issue #33.
-3. Verify CI and required review policy before merging; recount `origin/main` after merge.
+1. Commit the updated progress record and open a PR for Issue #35.
+2. Verify CI and repository review requirements, then merge only if allowed.
+3. After design acceptance, create a separate issue for implementation and conformance tests.
 
 ## Commit growth tracking
 
