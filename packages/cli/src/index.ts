@@ -14,6 +14,8 @@ interface PackageMetadata {
   readonly version: string;
 }
 
+type LanguageVersion = "0.1" | "0.2";
+
 function getVersion(): string {
   const packageJson = new URL("../package.json", import.meta.url);
   const metadata = JSON.parse(readFileSync(packageJson, "utf8")) as PackageMetadata;
@@ -32,10 +34,10 @@ function printHelp(): void {
       "  geulion --version",
       "  geulion tokens <file.geul>",
       "  geulion parse <file.geul>",
-      "  geulion check <file.geul>",
-      "  geulion emit-js <file.geul>",
-      "  geulion run <file.geul>",
-      "  geulion build <file.geul> [--out-dir <directory>]",
+      "  geulion check <file.geul> [--language-version 0.2]",
+      "  geulion emit-js <file.geul> [--language-version 0.2]",
+      "  geulion run <file.geul> [--language-version 0.2]",
+      "  geulion build <file.geul> [--out-dir <directory>] [--language-version 0.2]",
       "",
     ].join("\n"),
   );
@@ -55,11 +57,11 @@ type CompiledFile =
   | { readonly success: true; readonly code: string }
   | { readonly success: false; readonly status: number };
 
-function compileFile(path: string): CompiledFile {
+function compileFile(path: string, languageVersion: LanguageVersion): CompiledFile {
   const source = readSource(path);
   if (source === undefined) return { success: false, status: 2 };
 
-  const result = compileSource({ path, source, target: "node" });
+  const result = compileSource({ path, source, target: "node", languageVersion });
   if (!result.success) {
     return {
       success: false,
@@ -69,8 +71,8 @@ function compileFile(path: string): CompiledFile {
   return { success: true, code: result.code };
 }
 
-function runFile(path: string): number {
-  const result = compileFile(path);
+function runFile(path: string, languageVersion: LanguageVersion): number {
+  const result = compileFile(path, languageVersion);
   if (!result.success) return result.status;
 
   let temporaryDirectory: string | undefined;
@@ -99,8 +101,12 @@ function runFile(path: string): number {
   }
 }
 
-function buildFile(path: string, outputDirectory: string): number {
-  const result = compileFile(path);
+function buildFile(
+  path: string,
+  outputDirectory: string,
+  languageVersion: LanguageVersion,
+): number {
+  const result = compileFile(path, languageVersion);
   if (!result.success) return result.status;
 
   const outputPath = resolve(outputDirectory, `${basename(path).replace(/\.geul$/u, "")}.mjs`);
@@ -132,7 +138,11 @@ function printDiagnostics(
   return diagnostics.some((d) => d.phase === "internal") ? 2 : 1;
 }
 
-function inspectFile(command: "tokens" | "parse" | "check" | "emit-js", path: string): number {
+function inspectFile(
+  command: "tokens" | "parse" | "check" | "emit-js",
+  path: string,
+  languageVersion: LanguageVersion,
+): number {
   let source: Buffer;
   try {
     source = readFileSync(path);
@@ -154,13 +164,13 @@ function inspectFile(command: "tokens" | "parse" | "check" | "emit-js", path: st
   }
 
   if (command === "check") {
-    const result = checkSource({ path, source });
+    const result = checkSource({ path, source, languageVersion });
     return result.success
       ? 0
       : printDiagnostics(result.diagnostics, source, result.suppressedCount);
   }
   if (command === "emit-js") {
-    const result = compileSource({ path, source, target: "node" });
+    const result = compileSource({ path, source, target: "node", languageVersion });
     if (!result.success)
       return printDiagnostics(result.diagnostics, source, result.suppressedCount);
     process.stdout.write(result.code);
@@ -189,37 +199,58 @@ export function runCli(args: readonly string[]): number {
   }
 
   if (
-    (command === "tokens" || command === "parse" || command === "check" || command === "emit-js") &&
-    args.length === 2
+    command === "tokens" ||
+    command === "parse" ||
+    command === "check" ||
+    command === "emit-js" ||
+    command === "run" ||
+    command === "build"
   ) {
-    return inspectFile(command, args[1] ?? "");
-  }
-
-  if (command === "run" && args.length === 2) return runFile(args[1] ?? "");
-
-  if (command === "run" && args.length !== 2) {
-    process.stderr.write("사용법: geulion run <file.geul>\n");
-    return 2;
-  }
-
-  if (command === "build") {
     const path = args[1];
     let outputDirectory = "dist";
-    if (args.length === 2 && path) return buildFile(path, outputDirectory);
-    if (args.length === 4 && path && args[2] === "--out-dir" && args[3]) {
-      outputDirectory = args[3];
-      return buildFile(path, outputDirectory);
+    let languageVersion: LanguageVersion = "0.1";
+    let hasLanguageVersion = false;
+    let hasOutputDirectory = false;
+    for (let index = 2; index < args.length; index += 1) {
+      const option = args[index];
+      if (option === "--language-version" && !hasLanguageVersion) {
+        const value = args[index + 1];
+        if (value !== "0.1" && value !== "0.2") {
+          process.stderr.write("오류: --language-version은 0.1 또는 0.2여야 합니다.\n");
+          return 2;
+        }
+        languageVersion = value;
+        hasLanguageVersion = true;
+        index += 1;
+      } else if (command === "build" && option === "--out-dir" && !hasOutputDirectory) {
+        const value = args[index + 1];
+        if (!value) {
+          process.stderr.write(
+            "사용법: geulion build <file.geul> [--out-dir <directory>] [--language-version 0.2]\n",
+          );
+          return 2;
+        }
+        outputDirectory = value;
+        hasOutputDirectory = true;
+        index += 1;
+      } else {
+        process.stderr.write(
+          `사용법: geulion ${command} <file.geul>${command === "build" ? " [--out-dir <directory>]" : ""} [--language-version 0.2]\n`,
+        );
+        return 2;
+      }
     }
-    process.stderr.write("사용법: geulion build <file.geul> [--out-dir <directory>]\n");
-    return 2;
-  }
-
-  if (
-    (command === "tokens" || command === "parse" || command === "check" || command === "emit-js") &&
-    args.length !== 2
-  ) {
-    process.stderr.write(`사용법: geulion ${command} <file.geul>\n`);
-    return 2;
+    if (!path) {
+      process.stderr.write(`사용법: geulion ${command} <file.geul> [--language-version 0.2]\n`);
+      return 2;
+    }
+    if ((command === "tokens" || command === "parse") && hasLanguageVersion) {
+      process.stderr.write(`오류: ${command} 명령은 언어 버전 선택을 사용하지 않습니다.\n`);
+      return 2;
+    }
+    if (command === "run") return runFile(path, languageVersion);
+    if (command === "build") return buildFile(path, outputDirectory, languageVersion);
+    return inspectFile(command, path, languageVersion);
   }
 
   process.stderr.write(`Unknown command: ${args.join(" ")}\nRun 'geulion --help' for usage.\n`);
