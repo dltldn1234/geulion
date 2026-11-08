@@ -10,11 +10,11 @@
 - Initial cumulative commits: 58
 - Current cumulative commits on `origin/main`: 58
 - New merged commits: 0
-- Local unmerged commits: 2 (Issue #31 implementation and this documentation/progress commit)
+- Local unmerged commits: 3 (CLI implementation, usage documentation, and progress tracking)
 - Remaining to minimum 300: 242
 - Remaining to primary 400: 342
-- PR: not created
-- CI: not run for this work
+- PR: [#32](https://github.com/dltldn1234/geulion/pull/32), open against `main`
+- CI: run `42505514762` was `in_progress` at the last check; verify the latest run before merge.
 
 ## Completed
 
@@ -26,6 +26,8 @@
 - Added CLI process tests for runtime output and failures, build output and default directory, invalid arguments, and Unicode/space-containing paths.
 - Updated README/compiler docs and this progress tracker.
 - Local implementation commit: `8b832f6` (`✨ feat: add GEULION run and build commands (#31)`).
+- Local documentation commit: `eeda2a2` (`📝 docs: document Phase 5 CLI progress (#31)`).
+- Branch `31-feat/runtime-cli` is pushed to `origin` and is the head of PR #32.
 
 ## Verification
 
@@ -39,14 +41,13 @@
 
 ## Known blockers
 
-- `gh auth status` reports the configured GitHub CLI token is invalid. Issue creation through the connector was also denied, so Issue #31 was created in the authenticated GitHub browser session. Git push, PR creation, and remote CI may require renewed CLI authentication or a permitted GitHub integration.
+- The GitHub connector denied issue and pull-request creation with HTTP 403. Both were created through the authenticated browser. A subsequent `git fetch origin` retry could not write `.git/FETCH_HEAD` in this environment; the required baseline fetch and count had already succeeded before work began, and pushing the branch succeeded.
 
 ## Next
 
-1. Complete final review, commit the Issue #31 changes, and confirm the working tree.
-2. Review the diff, commit only Issue #31 files using the repository convention, and push if authentication is available.
-3. Open a PR, verify CI and required review, then merge only if repository policy allows.
-4. Recount `origin/main` after merge and update this progress record with actual merged commit count and next Phase.
+1. Verify CI on the latest PR #32 head and address any failures.
+2. Confirm required review and merge only when repository policy allows.
+3. Recount `origin/main` after merge and update this progress record with actual merged commit count and next Phase.
 
 ## Commit growth tracking
 
