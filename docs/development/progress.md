@@ -2,21 +2,21 @@
 
 ## Current status
 
-- Current Phase: 6 — Standard Library & Language Evolution (proposal review)
-- Current Issue: [#35 — Resolve v0.2 string utility naming and version selection](https://github.com/dltldn1234/geulion/issues/35)
-- Working branch: `35-docs/v02-finalization`
+- Current Phase: 6 — Standard Library & Language Evolution (v0.2 implementation)
+- Current Issue: [#37 — Implement v0.2 language selection and string utilities](https://github.com/dltldn1234/geulion/issues/37)
+- Working branch: `37-feat/v02-language-and-string-stdlib`
 - Initial baseline SHA: `afc1b41`
 - Initial main commit count: 58 (`git fetch origin` then `git rev-list --count origin/main`)
-- Latest main SHA: `6518b9c`
+- Latest main SHA: `04a72ba`
 - Initial cumulative commits: 58
-- Current cumulative commits on `origin/main`: 65
-- New commits reachable from main since baseline: 7 (five PR commits plus two Merge Commits)
-- Local unmerged commits: 3 on Issue #35 (design decision, progress tracking, and this final status update)
-- Remaining to minimum 300: 235
-- Remaining to primary 400: 335
-- Remaining to extended 500: 435
-- Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed.
-- Current Issue #35 branch has no PR or CI result yet; proposal formatting and diff checks pass.
+- Current cumulative commits on `origin/main`: 69
+- New commits reachable from main since baseline: 11 (eight PR commits plus three Merge Commits)
+- Local unmerged commits: 5 on Issue #37 (semantic/runtime, CLI, tests, docs, progress record)
+- Remaining to minimum 300: 231
+- Remaining to primary 400: 331
+- Remaining to extended 500: 431
+- Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed; [#36](https://github.com/dltldn1234/geulion/pull/36), Merge Commit `04a72ba`, CI passed.
+- Issue #37 implementation is committed locally and not yet pushed or submitted for CI.
 
 ## Completed
 
@@ -35,6 +35,9 @@
 - PR #34 merged two branch commits plus one Merge Commit; proposal remains Proposed until its API naming and version-selection questions are resolved.
 - Issue #35 resolves the proposed API names and argument order, Unicode scalar counting/comparison, and explicit CLI opt-in (`--language-version 0.2`) while keeping v0.1 as default. These are proposal decisions, not implementation.
 - Design decision commit: `72f3e42` (`📝 docs: resolve v0.2 string API proposal decisions (#35)`).
+- PR #36 merged Issue #35 with three branch commits and Merge Commit `04a72ba`; all CI checks passed.
+- Issue #37 adds explicit version selection to `check`, `emit-js`, `run`, and `build`, with the v0.1 prelude preserved by default and four v0.2 scalar-sequence string utilities.
+- Issue #37 local commits: `0d36442` string prelude/runtime, `0762e34` CLI version selection, `93cdcd6` cross-command execution tests, and `508d5dc` v0.2 usage/spec status docs.
 
 ## Verification
 
@@ -46,16 +49,17 @@
 - `git diff --check`: passed.
 - Actual process-level run and standalone build execution are covered by the CLI tests above.
 - Phase 6 docs proposal: `pnpm format:check` passed; `git diff --check` passed; PR #34 CI passed lint, format, typecheck, test, and build.
+- Issue #37 final local verification: `pnpm format:check`, `pnpm typecheck`, `pnpm test` (13 files / 167 tests), `pnpm lint`, and `git diff --check` all passed. Tests cover v0.1 rejection, v0.2 check/emit-js/run/build behavior, Unicode scalar length, exact search behavior, empty inputs, and unsupported CLI versions.
 
 ## Known blockers
 
-- GitHub connector writes and branch-protection reads return HTTP 403. Issue/PR creation and regular merges were completed in the authenticated browser. PR #34 showed all checks passed, no conflicts, and an enabled merge action; its merge was accepted by GitHub. The initial baseline fetch and count succeeded, and `origin/main` was fetched again after PR #34.
+- GitHub connector writes and branch-protection reads return HTTP 403. Issue/PR creation and regular merges were completed in the authenticated browser. PR #36 showed all checks passed, no conflicts, and an enabled merge action; GitHub confirmed Merge Commit `04a72ba`. The latest fetch confirms `origin/main` has 69 commits.
 
 ## Next
 
-1. Commit the updated progress record and open a PR for Issue #35.
-2. Verify CI and repository review requirements, then merge only if allowed.
-3. After design acceptance, create a separate issue for implementation and conformance tests.
+1. Push the five Issue #37 commits and open an Issue-linked PR.
+2. Verify required review and CI before merging; update main-only commit totals after merge.
+3. Continue Phase 6 with real language/library work after Issue #37, tracking only commits reachable from `origin/main` toward the 300/400/500 targets.
 
 ## Commit growth tracking
 
