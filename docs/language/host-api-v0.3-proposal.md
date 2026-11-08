@@ -1,6 +1,6 @@
 # GEULION v0.3 Host and Application Boundary Proposal
 
-**Status: Proposed. This document is a design proposal, not a language specification or an implemented API.** It recommends a small browser-hosted application boundary to support GEULION Idle while preserving the v0.1 and v0.2 contracts. It does not authorize an implementation to treat the shapes below as stable.
+**Status: Superseded as a decision source.** This document records the initial design exploration. The v0.3 browser-module, export, ABI, value-validation, and save-envelope decisions are now specified in [specification-v0.3-host-api.md](specification-v0.3-host-api.md). That document is a normative design target, not evidence that the features are implemented.
 
 ## Goals and boundaries
 
@@ -44,7 +44,7 @@ Illustrative future source surface (proposal only):
 }
 ```
 
-The names and exact syntax above are illustrative. Before implementation, a follow-up design decision must settle the export marker spelling, browser-target CLI/API shape, and whether v0.3 requires a `시작` function for browser modules. The key contract is explicit exports with static signatures, not the provisional spellings.
+The names and syntax in this historical example were illustrative when first proposed. The normative spelling and browser-target behavior are now defined in [specification-v0.3-host-api.md](specification-v0.3-host-api.md).
 
 The proposed module surface is:
 
@@ -76,7 +76,7 @@ interface ProgramModule {
 declare function createModule(host: RuntimeCallbacks): ProgramModule;
 ```
 
-These TypeScript declarations describe the proposed JavaScript embedding ABI. They do not add function values or user-defined type declarations to GEULION source.
+These TypeScript declarations were an initial ABI sketch. The normative JavaScript embedding ABI is defined in [specification-v0.3-host-api.md](specification-v0.3-host-api.md). Neither document adds function values or user-defined type declarations to GEULION source.
 
 ## Value transport
 
@@ -109,7 +109,7 @@ Persistence should store an envelope such as `{ format: "geulion-save", envelope
 
 ## Host adapter contract
 
-The application host, not the GEULION module, owns platform APIs. A browser adapter can implement the following conceptual interface; exact TypeScript names are not normative:
+The application host, not the GEULION module, owns platform APIs. The interface below records the initial conceptual design; normative browser module boundaries and failure results are defined in [specification-v0.3-host-api.md](specification-v0.3-host-api.md).
 
 ```ts
 interface IdleHost {
@@ -177,7 +177,7 @@ The module must not throw an untyped exception for expected validation or GEULIO
 
 ## Deferred questions and follow-up work
 
-Before this proposal can become normative, a focused design issue must settle:
+The follow-up design issue resolved these questions in [specification-v0.3-host-api.md](specification-v0.3-host-api.md):
 
 - the exact export syntax and whether a browser module must also define `시작`;
 - generated module factory and `invoke` TypeScript signatures;
@@ -185,4 +185,4 @@ Before this proposal can become normative, a focused design issue must settle:
 - how browser diagnostics and GEULION `출력` are presented to the embedding UI;
 - the Node adapter policy and cross-target conformance cases.
 
-No browser runtime, persistence, timer, compiler target, syntax, dependency, or public API is implemented by this proposal.
+No browser runtime, persistence adapter, timer, compiler target, syntax, dependency, or public API is implemented merely by documenting these decisions. Implementation and executable conformance remain separate work.
