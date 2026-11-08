@@ -14,6 +14,7 @@ import {
   type ResolutionResult,
   type SymbolId,
   type FunctionSymbol,
+  type LanguageVersion,
 } from "./resolver.js";
 import {
   BOOLEAN,
@@ -54,8 +55,12 @@ export type AnalysisResult =
 const MAX_INTEGER = (1n << 63n) - 1n;
 const MIN_MAGNITUDE = 1n << 63n;
 
-export function analyzeProgram(ast: ProgramNode, path = "<stdin>"): AnalysisResult {
-  return checkResolvedProgram(resolveProgram(ast, path));
+export function analyzeProgram(
+  ast: ProgramNode,
+  path = "<stdin>",
+  languageVersion: LanguageVersion = "0.1",
+): AnalysisResult {
+  return checkResolvedProgram(resolveProgram(ast, path, languageVersion));
 }
 
 export function checkResolvedProgram(resolution: ResolutionResult): AnalysisResult {
