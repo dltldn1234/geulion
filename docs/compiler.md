@@ -29,9 +29,17 @@ pnpm exec geulion parse main.geul
 pnpm exec geulion check main.geul
 pnpm exec geulion emit-js main.geul > main.mjs
 node --enable-source-maps main.mjs
+pnpm exec geulion run main.geul
+pnpm exec geulion build main.geul
+pnpm exec geulion build main.geul --out-dir dist
+node --enable-source-maps dist/main.mjs
 ```
 
 마지막 명령의 표준 출력은 `42`와 줄바꿈입니다. `tokens`는 토큰을, `parse`는 AST JSON을 표시합니다. `check`는 성공 시 표준 출력 없이 종료 코드 0을 반환합니다. `emit-js`는 검사에 성공한 경우에만 JavaScript를 표준 출력으로 내보냅니다. 진단은 표준 오류로 전달하며 실패 시 0이 아닌 종료 코드를 반환합니다. `--help`, `--version`은 기존대로 사용할 수 있습니다.
+
+`run`은 `compileSource`로 검사·생성한 ES Module을 임시 디렉터리에 기록하고 현재 `process.execPath`의 Node.js 프로세스로 실행합니다. 자식 프로세스는 부모와 같은 stdout/stderr를 사용하며 종료 코드를 CLI에 전달합니다. 임시 디렉터리는 실행 성공, 실패, 예외 경로에서 정리합니다. 실행 중 무한 루프 등으로 프로그램이 끝나지 않으면 `run`도 계속 기다립니다.
+
+`build`는 기본적으로 `dist/<소스 파일명>.mjs`를 생성합니다. `--out-dir`로 출력 디렉터리를 지정할 수 있습니다. 결과 파일에는 runtime helper와 inline source map이 포함되어 있어 GEULION 컴파일러 패키지 없이 Node.js에서 실행할 수 있습니다. 출력 디렉터리가 없으면 만듭니다. 대상 파일과 같은 이름의 기존 `.mjs` 파일은 덮어씁니다.
 
 생성된 `.mjs`에는 runtime helper가 포함되며 Node.js 기본 모듈만 사용합니다. 실행 시 GEULION 패키지 설치가 필요하지 않습니다. 진입 함수는 생성 코드에서 정확히 한 번 호출합니다.
 
@@ -134,4 +142,4 @@ pnpm build
 
 테스트는 이름 해석·타입·프런트엔드 회귀, 공식 예제의 단계별 오류 코드, 실제 생성 JavaScript의 출력·종료 상태, runtime 원본 위치와 Source Map을 검증합니다. 표준 출력 실패는 주입한 host와 실제 쓰기 불가능한 stdout descriptor로 확인합니다. 특정 실행의 CI 성공 여부는 GitHub Actions 실행 결과에서 별도로 확인해야 합니다.
 
-`geulion run`·`geulion build`, 다중 파일 모듈, 패키지 관리자, 사용자 정의 클래스·고급 제네릭, 비동기·동시성, Web Playground·VSCode Extension, LLVM·WebAssembly 백엔드는 현재 구현 범위 밖입니다. 다음 Phase에서는 기존 `checkSource`·`compileSource` 위에 실행 파일 관리와 CLI 실행·빌드 workflow를 추가할 수 있습니다.
+다중 파일 모듈, 패키지 관리자, 사용자 정의 클래스·고급 제네릭, 비동기·동시성, Web Playground·VSCode Extension, LLVM·WebAssembly 백엔드는 현재 구현 범위 밖입니다. 다음 Phase에서는 명세 변경 절차를 거쳐 표준 라이브러리 및 필요한 언어 기능을 확장할 수 있습니다.
