@@ -81,4 +81,4 @@ JavaScript 표현은 비공개 구현 선택입니다. JavaScript 객체 identit
 
 `출력<T>`는 언어의 사용자 정의 제네릭 기능이 아니라 단 하나의 내장 다형 함수입니다. 다른 임의 타입 함수는 v0.1에서 다형이 아닙니다. 정수 변환은 수학적 정수 범위 검사를 거쳐야 하고, 단순 JavaScript `Number` 반올림으로 대체할 수 없습니다.
 
-`--language-version 0.2`를 선택하면 [v0.2 문자열 표준 함수](specification-v0.2-proposal.md)의 네 함수가 추가됩니다. v0.1 기본값에서는 이 이름들이 prelude에 없습니다.
+`--language-version 0.2`를 선택하면 [v0.2 문자열 표준 함수](specification-v0.2.md)의 네 함수가 추가됩니다. v0.1 기본값에서는 이 이름들이 prelude에 없습니다.

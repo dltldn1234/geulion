@@ -4,7 +4,7 @@ GEULION(글리온)은 한국어 사용자가 읽고 작성할 수 있는 정적 
 
 ## 상태
 
-Language Specification v0.1의 규칙은 **Specified**입니다. 명세 문서의 상태와 구현 상태는 별도로 관리합니다.
+Language Specification v0.1과 v0.2는 각각 별도 문서를 규범 진입점으로 사용합니다. v0.1은 해당 버전에서 선택한 프로그램에 계속 적용되며, v0.2는 v0.2 프로그램의 문자열 표준 함수 계약을 정의합니다. 명세 문서의 상태와 구현 상태는 별도로 관리합니다.
 
 문서의 기능 상태는 다음 뜻으로 사용합니다.
 
@@ -18,16 +18,16 @@ Language Specification v0.1의 규칙은 **Specified**입니다. 명세 문서�
 ## 문서 구성
 
 - `specification-v0.1.md` — 버전별 규범 명세, 문서 우선순위, Lexer/Parser 경계
-- `specification-v0.2-proposal.md` — 문자열 표준 함수에 대한 비규범 설계 제안 (Issue #33)
+- `specification-v0.2.md` — v0.2 문자열 표준 함수의 규범 명세
 - `design-decisions.md` — 설계 원칙과 결정 근거
 - `lexical-structure.md` — 문자, 식별자, 리터럴, 주석, 토큰과 위치 규칙
 - `grammar.ebnf` — 형식 문법과 표현식 우선순위
 - `type-system.md` — 타입, 추론, 타입 검사 규칙
 - `semantics.md` — 스코프, 평가 순서, 제어 흐름과 값 의미론
 - `diagnostics.md` — 진단 데이터와 오류 코드
-- `examples.md` — 적합/비적합 예제와 향후 적합성 검사 분류
+- `examples.md` — v0.1/v0.2 적합/비적합 예제와 실행되는 적합성 사례
 
-각 문서는 같은 규칙을 중복 정의하지 않습니다. `specification-v0.1.md`가 규범 문서의 목차와 우선순위를 정하고, 세부 규칙은 해당 전문 문서에서 정의합니다. 모순이 발견되면 추측으로 구현하지 않고 명세 변경으로 해결합니다.
+각 버전의 specification 문서가 해당 버전의 적용 범위와 문서 우선순위를 정하고, 세부 규칙은 해당 전문 문서에서 정의합니다. v0.1의 규범 문서는 `specification-v0.1.md`, v0.2 문자열 기능의 규범 문서는 `specification-v0.2.md`입니다. 모순이 발견되면 추측으로 구현하지 않고 명세 변경으로 해결합니다.
 
 ## 범위
 
