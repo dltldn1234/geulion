@@ -196,6 +196,53 @@ describe("GEULION Language Server Protocol", () => {
     }
   });
 
+  it("sorts duplicate workspace symbols by URI and declaration position", async () => {
+    const client = new LspClient();
+    try {
+      await client.request("initialize", { capabilities: {} });
+      client.notification("initialized");
+      const zUri = "file:///workspace/z.geul";
+      const aUri = "file:///workspace/a.geul";
+      client.notificationBatch(
+        {
+          method: "textDocument/didOpen",
+          params: {
+            textDocument: {
+              uri: zUri,
+              languageId: "geulion",
+              version: 1,
+              text: "함수 중복() -> 정수 { 반환 2 }",
+            },
+          },
+        },
+        {
+          method: "textDocument/didOpen",
+          params: {
+            textDocument: {
+              uri: aUri,
+              languageId: "geulion",
+              version: 1,
+              text: "함수 중복() -> 정수 { 반환 1 }\n함수 중복() -> 정수 { 반환 2 }",
+            },
+          },
+        },
+      );
+
+      const response = await client.request("workspace/symbol", { query: "중복" });
+      const symbols = response.result as {
+        name: string;
+        location: { uri: string; range: { start: { line: number } } };
+      }[];
+      expect(symbols.map(({ location }) => [location.uri, location.range.start.line])).toEqual([
+        [aUri, 0],
+        [aUri, 1],
+        [zUri, 0],
+      ]);
+    } finally {
+      await client.close();
+    }
+  });
+
   it.each([
     ["missing Content-Length", "X-Trace: test\r\n\r\n"],
     ["duplicate Content-Length", "Content-Length: 2\r\ncontent-length: 2\r\n\r\n{}"],
@@ -500,6 +547,49 @@ describe("GEULION Language Server Protocol", () => {
         return (message.params as { uri?: string }).uri === uri;
       });
       expect((closed.params as { diagnostics: unknown[] }).diagnostics).toEqual([]);
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("re-publishes diagnostics when a supported language version is selected", async () => {
+    const client = new LspClient();
+    try {
+      await client.request("initialize", { capabilities: {} });
+      client.notification("initialized");
+      const uri = "file:///workspace/versioned.geul";
+      client.notification("textDocument/didOpen", {
+        textDocument: {
+          uri,
+          languageId: "geulion",
+          version: 1,
+          text: '함수 시작() -> 없음 { 출력(문자열길이("가")) }',
+        },
+      });
+      const oldVersion = await client.waitFor((message) => {
+        if (message.method !== "textDocument/publishDiagnostics") return false;
+        return (message.params as { version?: number }).version === 1;
+      });
+      expect((oldVersion.params as { diagnostics: { code: string }[] }).diagnostics).toContainEqual(
+        expect.objectContaining({ code: "GE2001" }),
+      );
+
+      client.notification("workspace/didChangeConfiguration", {
+        settings: { geulion: { languageVersion: "0.2" } },
+      });
+      const updatedVersion = await client.waitFor((message) => {
+        if (message.method !== "textDocument/publishDiagnostics") return false;
+        return (message.params as { version?: number }).version === 1;
+      });
+      expect((updatedVersion.params as { diagnostics: unknown[] }).diagnostics).toEqual([]);
+
+      client.notification("workspace/didChangeConfiguration", {
+        settings: { geulion: { languageVersion: "9.9" } },
+      });
+      const unchangedVersion = await client.request("textDocument/documentSymbol", {
+        textDocument: { uri },
+      });
+      expect(unchangedVersion.result).toMatchObject([{ name: "시작" }]);
     } finally {
       await client.close();
     }
