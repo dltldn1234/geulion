@@ -124,6 +124,69 @@ describe("compiler integration and official conformance", () => {
     expect(compiled.diagnostics[0]).toMatchObject({ code: "GE2004", phase: "resolve" });
   });
 
+  it("compiles v0.3 only for the browser target and preserves source maps", () => {
+    const source = `공개 함수 계산(값: 정수) -> 정수 { 반환 값 }
+함수 시작() -> 없음 {}`;
+    const sourceInput = input("browser.geul", source, "0.3");
+    const result = compileSource({ ...sourceInput, target: "browser", languageVersion: "0.3" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.code).toContain("export function createModule(host)");
+      expect(result.code).not.toContain('from "node:fs"');
+      expect(result.code).not.toMatch(/\b(?:window|document|process)\b/u);
+      expect(result.sourceMap).toMatchObject({
+        version: 3,
+        sources: ["browser.geul"],
+        sourcesContent: [source],
+      });
+    }
+
+    const nodeV03 = compileSource({
+      ...sourceInput,
+      target: "node",
+    } as unknown as Parameters<typeof compileSource>[0]);
+    expect(nodeV03.success).toBe(false);
+    expect(nodeV03.diagnostics[0]).toMatchObject({ code: "GE2004", phase: "resolve" });
+
+    const browserV02 = compileSource({
+      ...input("browser.geul", source, "0.2"),
+      target: "browser",
+    } as unknown as Parameters<typeof compileSource>[0]);
+    expect(browserV02.success).toBe(false);
+    expect(browserV02.diagnostics[0]).toMatchObject({ code: "GE2004", phase: "resolve" });
+  });
+
+  it("requires at least one public function for a browser module", () => {
+    const source = exampleSource("N-012");
+    const sourceInput = input("N-012.geul", source, "0.3");
+    expect(checkSource(sourceInput).success).toBe(true);
+    const result = compileSource({
+      path: sourceInput.path,
+      source: sourceInput.source,
+      target: "browser",
+      languageVersion: "0.3",
+    });
+    expect(result.success).toBe(false);
+    expect(result.diagnostics[0]).toMatchObject({ code: "GE2005", phase: "resolve" });
+    expect("code" in result).toBe(false);
+  });
+
+  it("compiles the official P-103 browser export contract", () => {
+    const source = exampleSource("P-103");
+    const result = compileSource({
+      path: "P-103.geul",
+      source: new TextEncoder().encode(source),
+      target: "browser",
+      languageVersion: "0.3",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.code).toContain('name: "인사"');
+      expect(result.code).toContain("exports: _g_exports");
+      expect(result.code).not.toContain('from "node:fs"');
+    }
+  });
+
   it.each([
     ["N-001", "GE2003", "resolve"],
     ["N-002", "GE3001", "type"],

@@ -12,6 +12,7 @@ export type DiagnosticCode =
   | "GE2002"
   | "GE2003"
   | "GE2004"
+  | "GE2005"
   | "GE3001"
   | "GE3002"
   | "GE3003"

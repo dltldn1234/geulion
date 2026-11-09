@@ -6,7 +6,7 @@ import type {
   SourceSpan,
   StatementNode,
 } from "@geulion/ast";
-import type { TypedProgram } from "@geulion/semantic";
+import type { GeulType, TypedProgram } from "@geulion/semantic";
 import { createRuntime } from "./runtime.js";
 
 export interface GeneratedSourceMapping {
@@ -44,7 +44,11 @@ function vlq(value: number): string {
 
 export function generateJavaScript(
   program: TypedProgram,
-  options: { readonly sourceText?: string; readonly fileName?: string } = {},
+  options: {
+    readonly sourceText?: string;
+    readonly fileName?: string;
+    readonly target?: "node" | "browser";
+  } = {},
 ) {
   if (program.checked !== true) throw new Error("Code generation requires a checked typed program");
   const lines: string[] = [];
@@ -64,6 +68,12 @@ export function generateJavaScript(
   }
   function span(source: SourceSpan): string {
     return JSON.stringify(source);
+  }
+  function frozenAbiType(type: GeulType): string {
+    if (type.kind === "error") throw new Error("Cannot publish an error type");
+    return type.kind === "primitive"
+      ? `Object.freeze({ kind: "primitive", name: ${quoted(type.name)} })`
+      : `Object.freeze({ kind: "collection", name: ${quoted(type.name)}, element: ${frozenAbiType(type.element)} })`;
   }
   function expression(node: ExpressionNode): string {
     const type = program.expressionTypes.get(node);
@@ -197,9 +207,10 @@ export function generateJavaScript(
     }
   }
 
-  line('import { writeSync as _g_writeSync } from "node:fs";');
-  line(`const _g_source = ${quoted(options.sourceText?.replace(/^\uFEFF/, "") ?? "")};`);
-  line(`function _g_write(fd, text) {
+  if (options.target !== "browser") {
+    line('import { writeSync as _g_writeSync } from "node:fs";');
+    line(`const _g_source = ${quoted(options.sourceText?.replace(/^\uFEFF/, "") ?? "")};`);
+    line(`function _g_write(fd, text) {
   const bytes = new TextEncoder().encode(text);
   let offset = 0;
   while (offset < bytes.length) {
@@ -208,7 +219,7 @@ export function generateJavaScript(
     offset += written;
   }
 }`);
-  line(`const _g = (${createRuntime.toString()})({
+    line(`const _g = (${createRuntime.toString()})({
   write(text) { _g_write(1, text); },
   report(d) {
     let text = "오류 [" + d.code + "]: " + d.message + "\\n";
@@ -225,6 +236,22 @@ export function generateJavaScript(
     _g_write(2, text);
   }
 }, ${quoted(program.path)});`);
+  } else {
+    line(`export function createModule(host) {`);
+    indent++;
+    line(`let _g_write;
+try {
+  if (typeof host !== "object" || host === null || typeof host.write !== "function")
+    return { kind: "host-error", error: { code: "invalid-host" } };
+  _g_write = host.write;
+} catch {
+  return { kind: "host-error", error: { code: "invalid-host" } };
+}`);
+    line(`const _g = (${createRuntime.toString()})({
+  write(text) { _g_write(text); },
+  report() {}
+}, ${quoted(program.path)});`);
+  }
   for (const fn of program.ast.functions) {
     const id = symbolId(fn.name);
     line(
@@ -238,10 +265,51 @@ export function generateJavaScript(
     indent--;
     line("}");
   }
-  line(
-    `process.exitCode = _g.run(_g_f${program.entrypoint.id});`,
-    program.entrypoint.span ?? program.ast.span,
-  );
+  if (options.target === "browser") {
+    const signatures = program.exports.map((symbol) => {
+      const parameters = symbol.signature.parameters.map((type) => {
+        if (type === null)
+          throw new Error("Public signatures cannot contain polymorphic parameters");
+        return type;
+      });
+      return { symbol, parameters, returns: symbol.signature.returnType };
+    });
+    line(`const _g_exports = Object.freeze([
+${signatures
+  .map(
+    ({ symbol, parameters, returns }) =>
+      `  Object.freeze({ name: ${quoted(symbol.name)}, parameters: Object.freeze([${parameters.map(frozenAbiType).join(", ")}]), returns: ${frozenAbiType(returns)} })`,
+  )
+  .join(",\n")}
+]);`);
+    line(`const _g_functions = new Map([
+${signatures
+  .map(
+    ({ symbol }, index) =>
+      `  [${quoted(symbol.name)}, { signature: _g_exports[${index}], invoke: (arguments_) => _g.invokeAbi(_g_f${symbol.id}, ${quoted(symbol.name)}, arguments_, _g_exports[${index}]) }]`,
+  )
+  .join(",\n")}
+]);`);
+    line(`return {
+  kind: "module",
+  module: {
+    apiVersion: 1,
+    exports: _g_exports,
+    invoke(name, arguments_) {
+      if (typeof name !== "string" || !_g_functions.has(name))
+        return { kind: "host-error", error: { code: "unknown-export", name: typeof name === "string" ? name : "" } };
+      return _g_functions.get(name).invoke(arguments_);
+    }
+  }
+};`);
+    indent--;
+    line("}");
+  } else {
+    line(
+      `process.exitCode = _g.run(_g_f${program.entrypoint.id});`,
+      program.entrypoint.span ?? program.ast.span,
+    );
+  }
 
   let priorLine = 0;
   let priorColumn = 0;
