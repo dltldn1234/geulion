@@ -9,7 +9,7 @@ describe("GEULION Idle browser slice", () => {
     });
     expect(result.error).toBeUndefined();
     expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout).toContain("14 assertions passed");
+    expect(result.stdout).toContain("16 assertions passed");
   });
 
   it("preserves absent, corrupt, incompatible, and failed browser saves", () => {

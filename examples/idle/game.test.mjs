@@ -45,6 +45,11 @@ try {
   state = game.invoke("경과", [state, int(10_000)]).value;
   state = game.invoke("업그레이드", [state]).value;
   assert.deepEqual(values(state), [0, 1, 2, 20, 10, 15]);
+  state = game.invoke("오프라인경과", [state, int(86_400_000)]).value;
+  assert.deepEqual(values(state), [57_600, 1, 2, 20, 10, 28_815]);
+  state = game.invoke("새게임", []).value;
+  state = game.invoke("오프라인경과", [state, int(-1)]).value;
+  assert.deepEqual(values(state), [0, 1, 0, 10, 0, 0]);
   const clock = createWholeSecondClock();
   assert.equal(clock.consume(400), 0);
   assert.equal(clock.consume(400), 0);
@@ -55,7 +60,7 @@ try {
     producedMilliseconds += clock.consume(1000 / 60);
   }
   assert.equal(producedMilliseconds, 1000);
-  console.log("Idle GEULION browser module: 14 assertions passed");
+  console.log("Idle GEULION browser module: 16 assertions passed");
 } finally {
   await rm(output, { recursive: true, force: true });
 }
