@@ -31,30 +31,58 @@ const KEYWORDS = [
   "비어있음",
 ];
 const CORE_FUNCTIONS = [
-  { label: "출력", detail: "출력(값: 임의) -> 없음", snippet: "출력(${1:값})" },
-  { label: "정수로", detail: "정수로(값: 실수) -> 정수", snippet: "정수로(${1:실수값})" },
-  { label: "실수로", detail: "실수로(값: 정수) -> 실수", snippet: "실수로(${1:정수값})" },
+  {
+    label: "출력",
+    snippet: "출력(${1:값})",
+    returnType: "없음",
+    parameters: [{ label: "값: 임의", documentation: "출력할 값" }],
+  },
+  {
+    label: "정수로",
+    snippet: "정수로(${1:실수값})",
+    returnType: "정수",
+    parameters: [{ label: "값: 실수", documentation: "정수로 변환할 실수" }],
+  },
+  {
+    label: "실수로",
+    snippet: "실수로(${1:정수값})",
+    returnType: "실수",
+    parameters: [{ label: "값: 정수", documentation: "실수로 변환할 정수" }],
+  },
 ];
 const STRING_FUNCTIONS = [
   {
     label: "문자열길이",
-    detail: "문자열길이(값: 문자열) -> 정수",
     snippet: "문자열길이(${1:문자열})",
+    returnType: "정수",
+    parameters: [{ label: "값: 문자열", documentation: "길이를 구할 문자열" }],
   },
   {
     label: "문자열포함",
-    detail: "문자열포함(값: 문자열, 부분: 문자열) -> 불리언",
     snippet: "문자열포함(${1:문자열}, ${2:부분문자열})",
+    returnType: "불리언",
+    parameters: [
+      { label: "값: 문자열", documentation: "검색할 문자열" },
+      { label: "부분: 문자열", documentation: "포함 여부를 확인할 문자열" },
+    ],
   },
   {
     label: "문자열시작",
-    detail: "문자열시작(값: 문자열, 접두사: 문자열) -> 불리언",
     snippet: "문자열시작(${1:문자열}, ${2:접두사})",
+    returnType: "불리언",
+    parameters: [
+      { label: "값: 문자열", documentation: "확인할 문자열" },
+      { label: "접두사: 문자열", documentation: "시작 부분과 비교할 문자열" },
+    ],
   },
   {
     label: "문자열끝",
-    detail: "문자열끝(값: 문자열, 접미사: 문자열) -> 불리언",
     snippet: "문자열끝(${1:문자열}, ${2:접미사})",
+    returnType: "불리언",
+    parameters: [
+      { label: "값: 문자열", documentation: "확인할 문자열" },
+      { label: "접미사: 문자열", documentation: "끝 부분과 비교할 문자열" },
+    ],
   },
 ];
 
@@ -178,7 +206,7 @@ function activate(context, vscodeApi, spawnProcess = spawn) {
         });
         for (const entry of functions) {
           const item = new vscode.CompletionItem(entry.label, vscode.CompletionItemKind.Function);
-          item.detail = entry.detail;
+          item.detail = formatFunctionSignature(entry);
           item.insertText = new vscode.SnippetString(entry.snippet);
           items.push(item);
         }
@@ -200,7 +228,106 @@ function activate(context, vscodeApi, spawnProcess = spawn) {
       vscode.languages.registerCompletionItemProvider("geulion", completionProvider),
     );
   }
+  if (vscode.languages?.registerSignatureHelpProvider) {
+    const signatureProvider = {
+      provideSignatureHelp(document, position) {
+        const activeCall = findActiveCall(document.getText(), document.offsetAt(position));
+        if (!activeCall) return undefined;
+        const configuration = vscode.workspace.getConfiguration("geulion", document.uri);
+        const version = configuration.get("languageVersion", "0.1");
+        const availableFunctions =
+          version === "0.2" || version === "0.3"
+            ? [...CORE_FUNCTIONS, ...STRING_FUNCTIONS]
+            : CORE_FUNCTIONS;
+        const fn = availableFunctions.find((candidate) => candidate.label === activeCall.name);
+        if (!fn) return undefined;
+        const signatureLabel = formatFunctionSignature(fn);
+        const signature = new vscode.SignatureInformation(signatureLabel, signatureLabel);
+        signature.parameters = fn.parameters.map(
+          (parameter) => new vscode.ParameterInformation(parameter.label, parameter.documentation),
+        );
+        const help = new vscode.SignatureHelp();
+        help.signatures = [signature];
+        help.activeSignature = 0;
+        help.activeParameter = Math.min(activeCall.argumentIndex, fn.parameters.length - 1);
+        return help;
+      },
+    };
+    context.subscriptions.push(
+      vscode.languages.registerSignatureHelpProvider("geulion", signatureProvider, "(", ","),
+    );
+  }
   return { output };
+}
+
+function findActiveCall(source, cursorOffset) {
+  const prefix = source.slice(0, cursorOffset);
+  const delimiters = [];
+  let inString = false;
+  let escaped = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+  for (let index = 0; index < prefix.length; index += 1) {
+    const current = prefix[index];
+    const next = prefix[index + 1];
+    if (inLineComment) {
+      if (current === "\n" || current === "\r") inLineComment = false;
+      continue;
+    }
+    if (inBlockComment) {
+      if (current === "*" && next === "/") {
+        inBlockComment = false;
+        index += 1;
+      }
+      continue;
+    }
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (current === "\\") escaped = true;
+      else if (current === '"') inString = false;
+      continue;
+    }
+    if (current === "/" && next === "/") {
+      inLineComment = true;
+      index += 1;
+      continue;
+    }
+    if (current === "/" && next === "*") {
+      inBlockComment = true;
+      index += 1;
+      continue;
+    }
+    if (current === '"') {
+      inString = true;
+      continue;
+    }
+    if (current === "(" || current === "[" || current === "{") {
+      let call;
+      if (current === "(") {
+        const preceding = prefix.slice(0, index).match(/([\p{ID_Start}_][\p{ID_Continue}_]*)\s*$/u);
+        if (preceding) call = { name: preceding[1], argumentIndex: 0 };
+      }
+      delimiters.push({ close: current === "(" ? ")" : current === "[" ? "]" : "}", call });
+      continue;
+    }
+    if (current === ")" || current === "]" || current === "}") {
+      if (delimiters[delimiters.length - 1]?.close === current) delimiters.pop();
+      continue;
+    }
+    if (current === "," && delimiters[delimiters.length - 1]?.call) {
+      delimiters[delimiters.length - 1].call.argumentIndex += 1;
+    }
+  }
+  if (inLineComment || inBlockComment) return undefined;
+  for (let index = delimiters.length - 1; index >= 0; index -= 1) {
+    if (delimiters[index].call) return delimiters[index].call;
+  }
+  return undefined;
+}
+
+function formatFunctionSignature(fn) {
+  const parameters = fn.parameters.map((parameter) => parameter.label).join(", ");
+  return `${fn.label}(${parameters}) -> ${fn.returnType}`;
 }
 
 function registerEditorDiagnostics(context, vscode, output, spawnProcess) {
