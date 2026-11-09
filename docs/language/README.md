@@ -20,6 +20,7 @@ Language Specification v0.1과 v0.2는 각각 별도 문서를 규범 진입점�
 - `specification-v0.1.md` — 버전별 규범 명세, 문서 우선순위, Lexer/Parser 경계
 - `specification-v0.2.md` — v0.2 문자열 표준 함수의 규범 명세
 - `specification-v0.3-host-api.md` — v0.3 브라우저 모듈, 공개 함수, 호출 ABI 및 save-envelope 규범 계약 (**Specified**, save-envelope codec 및 주입형 byte-storage repository adapter 구현; backend/Idle UI 연결은 후속)
+- `module-system-proposal.md` — v0.4 다중 파일 import/export 및 프로젝트 컴파일 설계 (**Proposed RFC**, 규범 명세나 구현이 아님)
 - `host-api-v0.3-proposal.md` — v0.3 설계 배경 및 대안 (**Superseded**, 규범 규칙은 위 명세 참조)
 - `design-decisions.md` — 설계 원칙과 결정 근거
 - `lexical-structure.md` — 문자, 식별자, 리터럴, 주석, 토큰과 위치 규칙

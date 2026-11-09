@@ -3,17 +3,17 @@
 ## Current status
 
 - Current Phase: 10 — Language Server reliability and editor-workflow expansion
-- Current Issue: [#124 — Resolve function symbols across workspace files](https://github.com/dltldn1234/geulion/issues/124)
-- Working branch: `124-feat/cross-file-symbol-resolution`
+- Current Issue: [#126 — Define GEULION module and import system](https://github.com/dltldn1234/geulion/issues/126)
+- Working branch: `126-docs/module-system-rfc`
 - Initial baseline SHA: `afc1b41`
 - Initial main commit count: 58
-- Latest verified main SHA: `844d1b7d536d62d014fc79d90e814636cbfbe054` (2026-11-09; fetched from origin after PR #123 merge)
-- Current unique commits reachable from main: 230 (58 initial + 172)
-- New commits reachable from baseline `afc1b41`: 172
-- Local unmerged Issue #124 commits: 1 (cross-file editor navigation implementation in progress).
-- Remaining to minimum 300: 70
-- Remaining to primary 400: 170
-- Remaining to extended 500: 270
+- Latest verified main SHA: `0665554c1cfebe6e4384dfc9966c5a49e7f380c2` (2026-11-09; fetched from origin after PR #125 merge)
+- Current unique commits reachable from main: 232 (58 initial + 174)
+- New commits reachable from baseline `afc1b41`: 174
+- Local unmerged Issue #126 commits: 1 (module-system RFC in progress).
+- Remaining to minimum 300: 68
+- Remaining to primary 400: 168
+- Remaining to extended 500: 268
 - Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed; [#36](https://github.com/dltldn1234/geulion/pull/36), Merge Commit `04a72ba`, CI passed; [#38](https://github.com/dltldn1234/geulion/pull/38), Merge Commit `0eb762f587a9aae70e9fb539513fcbd5959ca2b1`, CI passed; [#40](https://github.com/dltldn1234/geulion/pull/40), Merge Commit `cc62261e93b67b2519e01e9895a77111680101c1`, CI run `42508397430` passed; [#42](https://github.com/dltldn1234/geulion/pull/42), Merge Commit `30f9f5c07d563fd5867e92cdc5924f56b7cd0b7e`, CI run `42534464926` passed; [#44](https://github.com/dltldn1234/geulion/pull/44), Merge Commit `6b30d98f534c0ff8c3acbbdca50086f0fd9ff325`, CI run `42536546327` passed; [#46](https://github.com/dltldn1234/geulion/pull/46), Merge Commit `de9df5bc305966999609c32cc676f0fe59574df6`, CI run `42538207631` passed; [#48](https://github.com/dltldn1234/geulion/pull/48), Merge Commit `1b0f3f7daa75322516a25ee1c0a87c85d27a4e36`, CI run `42540812517` passed; [#50](https://github.com/dltldn1234/geulion/pull/50), Merge Commit `852915e29178de5475a072a75e2201fa2dc0a36c`, CI run `42542499311` passed; [#52](https://github.com/dltldn1234/geulion/pull/52), Merge Commit `77ae9fe05bb7b4b711fdc642b90f708506d9eb12`, CI run `42543552208` passed; [#54](https://github.com/dltldn1234/geulion/pull/54), Merge Commit `9d3fa6dbc7daa693dbf3d1f7d6e82d3f84eaaeb1`, CI run `42546017229` passed; [#56](https://github.com/dltldn1234/geulion/pull/56), Merge Commit `a5e7aa1471a875be5bb41ef1518a8de550161700`, CI run `42548068173` passed; [#58](https://github.com/dltldn1234/geulion/pull/58), Merge Commit `e22138a0b86a8c0a5b484f58a4e522411d06fa5f`, CI run `42551438200` passed; [#60](https://github.com/dltldn1234/geulion/pull/60), Merge Commit `393ea42803152555e3b8d28ec0891d8421b8b8fe`, CI run `42552939016` passed; [#62](https://github.com/dltldn1234/geulion/pull/62), Merge Commit `b3a6ef15f54ed274852e801fdb6e50ebfb53c901`, CI run `42554061977` passed; [#64](https://github.com/dltldn1234/geulion/pull/64), Merge Commit `9b36d6e1f99c79ecd7643d4ed9d11b732c7091e5`, CI run `42554755892` passed; [#66](https://github.com/dltldn1234/geulion/pull/66), Merge Commit `a095ddd205034d95249bc03932368e97ad20b3b9`, CI run `42555621830` passed; [#68](https://github.com/dltldn1234/geulion/pull/68), Merge Commit `5ea8d3fa2862ec199173fdae5c7cc85ee1e7e3a3`, CI run `42556270362` passed; [#70](https://github.com/dltldn1234/geulion/pull/70), Merge Commit `55662e2eaab49a63a497207eee91b3b915cb5f21`, CI run `42558581415` passed; [#72](https://github.com/dltldn1234/geulion/pull/72), Merge Commit `99094715bab6327056addeee0cd0f4d482ee7e82`, CI run `42559536742` passed; [#74](https://github.com/dltldn1234/geulion/pull/74), Merge Commit `43702585d2fddb5653b2df584162d7033e834fcf`, CI run `42563653079` passed.; [#76](https://github.com/dltldn1234/geulion/pull/76), Merge Commit `9472b625266222253cf422c24f352ce1e9f41472`, CI passed.
 - Latest merged slice: [PR #80](https://github.com/dltldn1234/geulion/pull/80), Merge Commit `c1f868b59948711084588332bec4f7c7f992e5fd`, CI run `42576077086` passed; Issue #79 closed as completed.
 - [PR #82](https://github.com/dltldn1234/geulion/pull/82) completed Issue #81 workspace symbol search and merged as `bfb4effefb1fac3181b21d0f897028eac74e9d3a`; CI passed and Issue #81 is closed.
@@ -104,17 +104,18 @@
 - Issue #118 records PR #117, its CI result and merge commit, and the verified 224-commit `origin/main` snapshot.
 - Issue #120 adds regression coverage and documentation for symbol de-duplication across overlapping workspace roots. PR #121 CI run `42608722917` passed and merged as `5404a69a1350ba95808b7c4ecded5dce1ec483d9`; Issue #120 is closed.
 - Issue #122 records PR #121 and the verified 228-commit main snapshot. PR #123 CI run `42608956461` passed and merged as `844d1b7d536d62d014fc79d90e814636cbfbe054`; Issue #122 is closed.
+- Issue #124 adds unique-name cross-file definition/reference navigation as an editor aid, without changing compiler semantics. PR #125 CI run `42609968502` passed and merged as `0665554c1cfebe6e4384dfc9966c5a49e7f380c2`; Issue #124 is closed.
 
 ## Known limitations
 
-- The v0.2 increment covers only four pure string queries. Input, clocks, timers, randomness, persistence, filesystem access, browser APIs, FFI, and modules are not implemented.
-- Phase 7's playable Idle slice and capped offline-production/save migration are merged. Phase 8 has language basics, CLI commands, diagnostics, completions, signature help, hover, in-file navigation/references/rename, and the merged Issue #77 protocol server. Phase 9's local Playground is merged; its live browser UI still needs a local run where socket binding is available. Issue #75's Extension Host suite and Issue #79 Phase 10 protocol hardening have merged. Workspace symbol search covers open and closed `.geul` functions; cross-file semantic resolution remains outside its scope. The current implementation scans workspace files for each symbol request, so very large workspaces may need an indexed follow-up.
+- The v0.2 increment covers only four pure string queries. Input, clocks, timers, randomness, persistence, filesystem access, browser APIs, and FFI are not implemented. A v0.4 module system is proposed in RFC form but is not implemented.
+- Phase 7's playable Idle slice and capped offline-production/save migration are merged. Phase 8 has language basics, CLI commands, diagnostics, completions, signature help, hover, in-file navigation/references/rename, and the merged Issue #77 protocol server. Phase 9's local Playground is merged; its live browser UI still needs a local run where socket binding is available. Issue #75's Extension Host suite and Issue #79 Phase 10 protocol hardening have merged. Workspace symbol search covers open and closed `.geul` functions; unique-name cross-file definition/reference lookup is currently an editor aid and does not change compiler resolution. The current implementation scans workspace files for each symbol request, so very large workspaces may need an indexed follow-up.
 - The Node target remains Node-specific and auto-runs `시작`; only the explicit browser target produces a host-driven module without automatic entrypoint execution.
 
 ## Next
 
-1. Complete Issue #124 unique cross-file editor navigation, validate ambiguity handling, and merge after CI.
-2. Continue Phase 10 reliability and editor-workflow work while tracking commits reachable from `main`.
+1. Complete the Issue #126 v0.4 module-system RFC, resolve its product decisions, and merge after CI.
+2. Implement the approved module semantics in sequenced parser, compiler, CLI, and Language Server Issues; keep commit progress tied to `main`.
 
 ## Commit growth tracking
 
