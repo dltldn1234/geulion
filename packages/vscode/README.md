@@ -18,6 +18,8 @@ Completion suggestions include the lexer keywords and core built-ins. String hel
 
 Signature help is available while calling core built-ins and the version-enabled string helpers. It tracks nested delimiters and ignores commas inside strings and comments when selecting the active parameter.
 
+Hover shows short Korean descriptions for core keywords and built-ins. v0.2 string helpers and the contextual v0.3 `공개` modifier follow the selected language version; identifiers that are not part of the built-in vocabulary receive no generated documentation.
+
 Language Server features remain later Phase 8 work. Do not publish this extension to the Marketplace from this package.
 
 ## Validation
