@@ -4,13 +4,59 @@
   "description": "Korean language basics for GEULION source files.",
   "version": "0.1.0",
   "publisher": "dltldn1234",
+  "main": "./extension.js",
   "engines": {
     "vscode": "^1.90.0"
   },
+  "activationEvents": [
+    "onLanguage:geulion",
+    "onCommand:geulion.checkCurrentFile",
+    "onCommand:geulion.runCurrentFile"
+  ],
   "categories": [
     "Programming Languages"
   ],
   "contributes": {
+    "commands": [
+      {
+        "command": "geulion.checkCurrentFile",
+        "title": "GEULION: 현재 파일 검사",
+        "category": "GEULION"
+      },
+      {
+        "command": "geulion.runCurrentFile",
+        "title": "GEULION: 현재 파일 실행",
+        "category": "GEULION"
+      }
+    ],
+    "configuration": {
+      "title": "GEULION",
+      "properties": {
+        "geulion.executable": {
+          "type": "string",
+          "default": "geulion",
+          "description": "GEULION CLI 실행 파일 경로"
+        },
+        "geulion.arguments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "CLI 실행 파일에 명령보다 먼저 전달할 인자"
+        },
+        "geulion.languageVersion": {
+          "type": "string",
+          "enum": [
+            "0.1",
+            "0.2",
+            "0.3"
+          ],
+          "default": "0.1",
+          "description": "검사/실행에 사용할 GEULION 언어 버전"
+        }
+      }
+    },
     "languages": [
       {
         "id": "geulion",
