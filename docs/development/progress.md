@@ -5,12 +5,13 @@
 - Current Phase: 7 — GEULION Idle Game (offline production and save migration)
 - Current Issue: [#55 — Add capped offline production and Idle save migration](https://github.com/dltldn1234/geulion/issues/55)
 - Working branch: `55-feat/idle-offline-progress`
+- Current PR: [#56](https://github.com/dltldn1234/geulion/pull/56), open; CI run `42547909315` passed; merge pending.
 - Initial baseline SHA: `afc1b41`
 - Initial main commit count: 58
 - Latest verified main SHA: `9d3fa6dbc7daa693dbf3d1f7d6e82d3f84eaaeb1` (2026-11-09)
 - Current unique commits reachable from main: 108
 - New commits reachable from main since baseline: 50
-- Issue #55 local unmerged commits: 5 (four feature commits plus this progress update)
+- Issue #55 local unmerged commits: 6 (four feature commits plus two progress updates)
 - Remaining to minimum 300: 192
 - Remaining to primary 400: 292
 - Remaining to extended 500: 392
