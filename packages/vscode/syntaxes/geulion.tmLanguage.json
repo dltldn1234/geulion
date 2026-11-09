@@ -1,0 +1,83 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "GEULION",
+  "scopeName": "source.geulion",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#public-modifier" },
+    { "include": "#keywords" },
+    { "include": "#constants" },
+    { "include": "#types" },
+    { "include": "#numbers" },
+    { "include": "#operators" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [{ "include": "#line-comment" }, { "include": "#block-comment" }]
+    },
+    "line-comment": {
+      "name": "comment.line.double-slash.geulion",
+      "begin": "//",
+      "end": "$"
+    },
+    "block-comment": {
+      "name": "comment.block.geulion",
+      "begin": "/\\*",
+      "end": "\\*/"
+    },
+    "strings": {
+      "name": "string.quoted.double.geulion",
+      "begin": "\"",
+      "end": "\"|$",
+      "applyEndPatternLast": true,
+      "patterns": [
+        {
+          "name": "constant.character.escape.geulion",
+          "match": "\\\\(?:\\\\|\"|n|r|t|0|u\\{[0-9A-Fa-f]{1,6}\\})"
+        },
+        {
+          "name": "invalid.illegal.escape.geulion",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "public-modifier": {
+      "name": "storage.modifier.geulion",
+      "match": "(?<![\\p{L}\\p{M}\\p{N}\\p{Pc}_])공개(?=\\s+함수(?![\\p{L}\\p{M}\\p{N}\\p{Pc}_]))"
+    },
+    "keywords": {
+      "name": "keyword.control.geulion",
+      "match": "(?<![\\p{L}\\p{M}\\p{N}\\p{Pc}_])(?:상수|변수|함수|반환|만약|아니면|동안|중단|계속|그리고|또는|아니다|일부)(?![\\p{L}\\p{M}\\p{N}\\p{Pc}_])"
+    },
+    "constants": {
+      "name": "constant.language.geulion",
+      "match": "(?<![\\p{L}\\p{M}\\p{N}\\p{Pc}_])(?:참|거짓|비어있음)(?![\\p{L}\\p{M}\\p{N}\\p{Pc}_])"
+    },
+    "types": {
+      "name": "storage.type.geulion",
+      "match": "(?<![\\p{L}\\p{M}\\p{N}\\p{Pc}_])(?:정수|실수|문자열|불리언|없음|목록|사전|선택)(?![\\p{L}\\p{M}\\p{N}\\p{Pc}_])"
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.real.geulion",
+          "match": "(?<![\\p{L}\\p{M}\\p{N}\\p{Pc}_])(?:[0-9]+\\.[0-9]+(?:[eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+)(?![\\p{L}\\p{M}\\p{N}\\p{Pc}_])"
+        },
+        {
+          "name": "constant.numeric.integer.geulion",
+          "match": "(?<![\\p{L}\\p{M}\\p{N}\\p{Pc}_])[0-9]+(?![\\p{L}\\p{M}\\p{N}\\p{Pc}_])"
+        }
+      ]
+    },
+    "operators": {
+      "name": "keyword.operator.geulion",
+      "match": "->|==|!=|<=|>=|\\?\\?|[=+*/%<>-]"
+    },
+    "punctuation": {
+      "name": "punctuation.separator.geulion",
+      "match": "[()\\[\\]{}:,;]"
+    }
+  }
+}
