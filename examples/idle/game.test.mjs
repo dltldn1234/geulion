@@ -77,6 +77,10 @@ try {
     kind: "invalid-clock",
     elapsedMilliseconds: 0,
   });
+  assert.deepEqual(calculateOfflineElapsed(1000, Number.NaN), {
+    kind: "invalid-clock",
+    elapsedMilliseconds: 0,
+  });
   assert.deepEqual(calculateOfflineElapsed(0, MAX_OFFLINE_MILLISECONDS + 10_000), {
     kind: "elapsed",
     elapsedMilliseconds: MAX_OFFLINE_MILLISECONDS,
@@ -87,7 +91,7 @@ try {
     producedMilliseconds += clock.consume(1000 / 60);
   }
   assert.equal(producedMilliseconds, 1000);
-  console.log("Idle GEULION browser module: 21 assertions passed");
+  console.log("Idle GEULION browser module: 22 assertions passed");
 } finally {
   await rm(output, { recursive: true, force: true });
 }
