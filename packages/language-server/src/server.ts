@@ -417,6 +417,20 @@ function insideComment(text: string, offset: number): boolean {
   return false;
 }
 
+function insideString(text: string, offset: number): boolean {
+  let quoted = false;
+  let escaped = false;
+  for (let index = 0; index < Math.min(offset, text.length); index += 1) {
+    const character = text[index];
+    if (quoted) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') quoted = false;
+    } else if (character === '"') quoted = true;
+  }
+  return quoted;
+}
+
 function handleRequest(method: string, params: JsonObject): unknown {
   if (shutdownRequested) throw new RpcError(-32600, "Server has shut down");
   if (method === "initialize") {
@@ -516,6 +530,7 @@ function handleRequest(method: string, params: JsonObject): unknown {
     if (!document || !position) return null;
     const offset = sourceOffset(document.text, position);
     if (insideComment(document.text, offset)) return null;
+    if (insideString(document.text, offset)) return null;
     const reference = referencesAt(document, offset);
     if (reference) {
       const symbol = reference.symbol;
