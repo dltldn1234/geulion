@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   decodeSaveEnvelope,
   encodeSaveEnvelope,
+  createSaveRepository,
   SAVE_ENVELOPE_MAX_BYTES,
   SAVE_VALUE_MAX_COLLECTION_LENGTH,
   SAVE_VALUE_MAX_DEPTH,
@@ -303,5 +304,160 @@ describe("GEULION v0.3 save envelope codec", () => {
     expect(second.kind).toBe("encoded");
     if (first.kind === "encoded" && second.kind === "encoded")
       expect(first.bytes).toEqual(second.bytes);
+  });
+
+  it("loads missing storage separately from a persisted none value", async () => {
+    let stored: Uint8Array | null = null;
+    const repository = createSaveRepository(
+      {
+        async read() {
+          return stored;
+        },
+        async write(_key, bytes) {
+          stored = bytes;
+        },
+      },
+      "idle-save",
+      applicationVersion,
+    );
+
+    expect(await repository.load()).toEqual({ kind: "absent" });
+    expect(await repository.save({ kind: "none" })).toEqual({ kind: "saved" });
+    expect(await repository.load()).toEqual({ kind: "loaded", value: { kind: "none" } });
+  });
+
+  it("surfaces corrupt or incompatible persisted values without resetting storage", async () => {
+    const original = jsonBytes(envelope({ applicationVersion: "2.0" }));
+    let stored: Uint8Array | null = original;
+    const repository = createSaveRepository(
+      {
+        async read() {
+          return stored;
+        },
+        async write(_key, bytes) {
+          stored = bytes;
+        },
+      },
+      "idle-save",
+      applicationVersion,
+    );
+
+    expect(await repository.load()).toEqual({
+      kind: "codec-error",
+      code: "incompatible-application-version",
+    });
+    expect(stored).toBe(original);
+  });
+
+  it("keeps the last in-memory value when a storage write fails", async () => {
+    let stored: Uint8Array | null = null;
+    let failWrites = false;
+    const repository = createSaveRepository(
+      {
+        async read() {
+          return stored;
+        },
+        async write(_key, bytes) {
+          if (failWrites) throw new Error("quota exceeded");
+          stored = bytes;
+        },
+      },
+      "idle-save",
+      applicationVersion,
+    );
+
+    expect(await repository.transact(() => ({ kind: "integer", decimal: "1" }))).toEqual({
+      kind: "saved",
+      value: { kind: "integer", decimal: "1" },
+    });
+    const previousBytes = stored;
+    failWrites = true;
+    expect(await repository.transact(() => ({ kind: "integer", decimal: "2" }))).toEqual({
+      kind: "storage-error",
+    });
+    expect(stored).toBe(previousBytes);
+    expect(
+      await repository.transact((current) => {
+        expect(current).toEqual({ kind: "integer", decimal: "1" });
+        return current;
+      }),
+    ).toEqual({ kind: "storage-error" });
+  });
+
+  it("serializes concurrent state transitions and isolates updater mutations", async () => {
+    let stored: Uint8Array | null = null;
+    const repository = createSaveRepository(
+      {
+        async read() {
+          return stored;
+        },
+        async write(_key, bytes) {
+          stored = bytes;
+        },
+      },
+      "idle-save",
+      applicationVersion,
+    );
+    await repository.save({ kind: "list", values: [{ kind: "integer", decimal: "0" }] });
+
+    const increment = () =>
+      repository.transact((current) => {
+        if (current?.kind !== "list") throw new Error("expected state list");
+        const values = current.values as { kind: "integer"; decimal: string }[];
+        const before = BigInt(values[0]!.decimal);
+        values[0] = { kind: "integer", decimal: String(before + 1n) };
+        return current;
+      });
+
+    const [first, second] = await Promise.all([increment(), increment()]);
+    expect(first.kind).toBe("saved");
+    expect(second.kind).toBe("saved");
+    expect(await repository.load()).toEqual({
+      kind: "loaded",
+      value: { kind: "list", values: [{ kind: "integer", decimal: "2" }] },
+    });
+  });
+
+  it("maps storage failures and invalid adapter arguments to typed outcomes", async () => {
+    const readFailure = createSaveRepository(
+      {
+        async read() {
+          throw new Error("unavailable");
+        },
+        async write() {},
+      },
+      "idle-save",
+      applicationVersion,
+    );
+    expect(await readFailure.load()).toEqual({ kind: "storage-error" });
+
+    const invalid = createSaveRepository(
+      {
+        async read() {
+          return null;
+        },
+        async write() {},
+      },
+      "",
+      applicationVersion,
+    );
+    expect(await invalid.load()).toEqual({
+      kind: "adapter-error",
+    });
+
+    const invalidVersion = createSaveRepository(
+      {
+        async read() {
+          return null;
+        },
+        async write() {},
+      },
+      "idle-save",
+      "invalid/version",
+    );
+    expect(await invalidVersion.load()).toEqual({
+      kind: "codec-error",
+      code: "invalid-application-version",
+    });
   });
 });

@@ -40,6 +40,158 @@ export type EncodeSaveEnvelopeResult =
   | { readonly kind: "encoded"; readonly bytes: Uint8Array }
   | { readonly kind: "error"; readonly code: SaveEnvelopeErrorCode };
 
+export interface SaveStorage {
+  read(key: string): Promise<Uint8Array | null>;
+  write(key: string, bytes: Uint8Array): Promise<void>;
+}
+
+export type LoadStoredValueResult =
+  | { readonly kind: "absent" }
+  | { readonly kind: "loaded"; readonly value: GeulionValue }
+  | { readonly kind: "codec-error"; readonly code: SaveEnvelopeErrorCode }
+  | { readonly kind: "adapter-error" }
+  | { readonly kind: "storage-error" };
+
+export type SaveStoredValueResult =
+  | { readonly kind: "saved" }
+  | { readonly kind: "codec-error"; readonly code: SaveEnvelopeErrorCode }
+  | { readonly kind: "adapter-error" }
+  | { readonly kind: "storage-error" };
+
+export type SaveTransactionResult =
+  | { readonly kind: "saved"; readonly value: GeulionValue }
+  | { readonly kind: "codec-error"; readonly code: SaveEnvelopeErrorCode }
+  | { readonly kind: "adapter-error" }
+  | { readonly kind: "storage-error" };
+
+export interface SaveRepository {
+  load(): Promise<LoadStoredValueResult>;
+  save(value: unknown): Promise<SaveStoredValueResult>;
+  transact(update: (current: GeulionValue | null) => unknown): Promise<SaveTransactionResult>;
+}
+
+export function createSaveRepository(
+  storage: SaveStorage,
+  key: string,
+  applicationVersion: string,
+): SaveRepository {
+  if (!validApplicationVersion(applicationVersion)) {
+    return {
+      async load() {
+        return { kind: "codec-error", code: "invalid-application-version" };
+      },
+      async save() {
+        return { kind: "codec-error", code: "invalid-application-version" };
+      },
+      async transact() {
+        return { kind: "codec-error", code: "invalid-application-version" };
+      },
+    };
+  }
+  if (
+    typeof storage !== "object" ||
+    storage === null ||
+    typeof storage.read !== "function" ||
+    typeof storage.write !== "function" ||
+    typeof key !== "string" ||
+    key.length === 0
+  ) {
+    return {
+      async load() {
+        return { kind: "adapter-error" };
+      },
+      async save() {
+        return { kind: "adapter-error" };
+      },
+      async transact() {
+        return { kind: "adapter-error" };
+      },
+    };
+  }
+
+  let inMemoryValue: GeulionValue | null = null;
+  let loaded = false;
+  let tail: Promise<void> = Promise.resolve();
+
+  const serialized = <T>(operation: () => Promise<T>): Promise<T> => {
+    const result = tail.then(operation, operation);
+    tail = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  };
+
+  const readCurrent = async (): Promise<LoadStoredValueResult> => {
+    try {
+      const bytes = await storage.read(key);
+      const decoded = decodeSaveEnvelope(bytes, applicationVersion);
+      if (decoded.kind === "absent") {
+        inMemoryValue = null;
+        loaded = true;
+        return decoded;
+      }
+      if (decoded.kind === "error") return { kind: "codec-error", code: decoded.code };
+      inMemoryValue = decoded.envelope.value;
+      loaded = true;
+      return { kind: "loaded", value: decoded.envelope.value };
+    } catch {
+      return { kind: "storage-error" };
+    }
+  };
+
+  const writeValue = async (value: unknown): Promise<SaveTransactionResult> => {
+    const encoded = encodeSaveEnvelope(applicationVersion, value);
+    if (encoded.kind === "error") return { kind: "codec-error", code: encoded.code };
+    const normalized = decodeSaveEnvelope(encoded.bytes, applicationVersion);
+    if (normalized.kind !== "loaded")
+      return {
+        kind: "codec-error",
+        code: normalized.kind === "error" ? normalized.code : "invalid-value",
+      };
+    try {
+      await storage.write(key, encoded.bytes);
+      inMemoryValue = normalized.envelope.value;
+      loaded = true;
+      return { kind: "saved", value: normalized.envelope.value };
+    } catch {
+      return { kind: "storage-error" };
+    }
+  };
+
+  return {
+    load: () =>
+      serialized(async () => {
+        const result = await readCurrent();
+        return result;
+      }),
+    save: (value) =>
+      serialized(async () => {
+        const result = await writeValue(value);
+        return result.kind === "saved" ? { kind: "saved" } : result;
+      }),
+    transact: (update) =>
+      serialized(async () => {
+        if (!loaded) {
+          const current = await readCurrent();
+          if (current.kind === "codec-error" || current.kind === "storage-error") return current;
+          if (current.kind === "loaded") inMemoryValue = current.value;
+          else inMemoryValue = null;
+        }
+
+        const snapshot =
+          inMemoryValue === null ? null : (normalizeValue(inMemoryValue, 0, makeBudget()) ?? null);
+        let next: unknown;
+        try {
+          next = update(snapshot);
+        } catch {
+          return { kind: "codec-error", code: "invalid-value" };
+        }
+        return await writeValue(next);
+      }),
+  };
+}
+
 export const SAVE_ENVELOPE_MAX_BYTES = 1_048_576;
 export const SAVE_VALUE_MAX_DEPTH = 64;
 export const SAVE_VALUE_MAX_NODES = 65_536;
