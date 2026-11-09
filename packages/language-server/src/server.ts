@@ -526,6 +526,40 @@ function analyze(document: Document) {
   });
 }
 
+function safeDiagnosticEdit(
+  code: string,
+  help: string,
+  span: SourceSpan | null,
+  document: Document,
+): { title: string; range: Range; newText: string } | null {
+  if (!span) return null;
+  const start = span.start.utf16Offset;
+  const end = span.end.utf16Offset;
+  const declaration = document.text.slice(start, end);
+  // The compiler points at the whole program for a missing entrypoint. Narrow this
+  // recognized, explicit hint to a sole top-level function declaration's name.
+  if (code === "GE2003" && help === "정확히 하나의 비공개 `함수 시작() -> 없음`을 선언하세요.") {
+    const declarations = [
+      ...document.text.matchAll(/(?:^|\n)\s*함수\s+([\p{L}\p{M}_][\p{L}\p{M}\p{N}_]*)\s*\(/gu),
+    ];
+    if (declarations.length !== 1 || declaration.trim() !== document.text.trim()) return null;
+    const match = declarations[0];
+    const name = match?.[1];
+    if (!match || !name || name === "시작") return null;
+    const nameStart = (match.index ?? 0) + match[0].lastIndexOf(name);
+    const nameEnd = nameStart + name.length;
+    return {
+      title: "진입 함수 이름을 '시작'으로 바꾸기",
+      range: {
+        start: positionAtOffset(document.text, nameStart),
+        end: positionAtOffset(document.text, nameEnd),
+      },
+      newText: "시작",
+    };
+  }
+  return null;
+}
+
 function publishDiagnostics(document: Document): void {
   const result = analyze(document);
   const diagnostics = result.diagnostics.map((diagnostic) =>
@@ -802,6 +836,7 @@ function handleRequest(method: string, params: JsonObject): unknown {
         textDocumentSync: { openClose: true, change: 1 },
         workspace: { workspaceFolders: { supported: true, changeNotifications: true } },
         completionProvider: { resolveProvider: false },
+        codeActionProvider: { codeActionKinds: ["quickfix"] },
         signatureHelpProvider: { triggerCharacters: ["(", ","], retriggerCharacters: [","] },
         hoverProvider: true,
         definitionProvider: true,
@@ -860,6 +895,44 @@ function handleRequest(method: string, params: JsonObject): unknown {
         ...(clientSupportsSnippets ? { insertTextFormat: 2 } : {}),
       } as (typeof items)[number]);
     return { isIncomplete: false, items };
+  }
+  if (method === "textDocument/codeAction") {
+    const document = getDocument(params);
+    const context = getObject(params, "context");
+    const requested = Array.isArray(context?.diagnostics) ? context.diagnostics : [];
+    if (!document || requested.length === 0) return [];
+    const analysis = analyze(document);
+    const diagnostics = requested.filter(isObject);
+    return analysis.diagnostics.flatMap((diagnostic) => {
+      const hint = diagnostic.help;
+      const edit = hint
+        ? safeDiagnosticEdit(diagnostic.code, hint, diagnostic.range, document)
+        : null;
+      if (!edit) return [];
+      const lspDiagnostic = toLspDiagnostic(diagnostic, document.text);
+      const matching = diagnostics.find(
+        (candidate) =>
+          candidate.code === lspDiagnostic.code &&
+          candidate.message === lspDiagnostic.message &&
+          JSON.stringify(candidate.range) === JSON.stringify(lspDiagnostic.range),
+      );
+      if (!matching) return [];
+      return [
+        {
+          title: edit.title,
+          kind: "quickfix",
+          diagnostics: [matching],
+          edit: {
+            documentChanges: [
+              {
+                textDocument: { uri: document.uri, version: document.version },
+                edits: [{ range: edit.range, newText: edit.newText }],
+              },
+            ],
+          },
+        },
+      ];
+    });
   }
   if (method === "textDocument/signatureHelp") {
     const document = getDocument(params);

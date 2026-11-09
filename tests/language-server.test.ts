@@ -577,6 +577,7 @@ describe("GEULION Language Server Protocol", () => {
       const result = initialized.result as { capabilities: Record<string, unknown> };
       expect(result.capabilities.positionEncoding).toBe("utf-16");
       expect(result.capabilities.renameProvider).toEqual({ prepareProvider: true });
+      expect(result.capabilities.codeActionProvider).toEqual({ codeActionKinds: ["quickfix"] });
       for (const provider of [
         "textDocumentSync",
         "completionProvider",
@@ -757,6 +758,75 @@ describe("GEULION Language Server Protocol", () => {
         return (message.params as { uri?: string }).uri === uri;
       });
       expect((closed.params as { diagnostics: unknown[] }).diagnostics).toEqual([]);
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("offers only the safe entrypoint-name quick fix for matching compiler diagnostics", async () => {
+    const client = new LspClient();
+    try {
+      const initialized = await client.request("initialize", {
+        capabilities: { general: { positionEncodings: ["utf-8"] } },
+      });
+      const capabilities = (initialized.result as { capabilities: Record<string, unknown> })
+        .capabilities;
+      expect(capabilities.codeActionProvider).toEqual({ codeActionKinds: ["quickfix"] });
+      client.notification("initialized");
+
+      const uri = "file:///workspace/fix.geul";
+      const text = "함수 보조기능() -> 없음 { }";
+      client.notification("textDocument/didOpen", {
+        textDocument: { uri, languageId: "geulion", version: 7, text },
+      });
+      const published = await client.waitFor((message) => {
+        if (message.method !== "textDocument/publishDiagnostics") return false;
+        const params = message.params as { uri?: string; version?: number };
+        return params.uri === uri && params.version === 7;
+      });
+      const diagnostics = (published.params as { diagnostics: Record<string, unknown>[] })
+        .diagnostics;
+      expect(diagnostics).toHaveLength(1);
+      const actions = await client.request("textDocument/codeAction", {
+        textDocument: { uri },
+        range: { start: { line: 0, character: 0 }, end: { line: 0, character: 20 } },
+        context: { diagnostics },
+      });
+      expect(actions.result).toEqual([
+        {
+          title: "진입 함수 이름을 '시작'으로 바꾸기",
+          kind: "quickfix",
+          diagnostics: [diagnostics[0]],
+          edit: {
+            documentChanges: [
+              {
+                textDocument: { uri, version: 7 },
+                edits: [
+                  {
+                    range: {
+                      start: { line: 0, character: 7 },
+                      end: { line: 0, character: 19 },
+                    },
+                    newText: "시작",
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ]);
+      const unmatched = await client.request("textDocument/codeAction", {
+        textDocument: { uri },
+        range: { start: { line: 0, character: 0 }, end: { line: 0, character: 20 } },
+        context: { diagnostics: [{ ...diagnostics[0], code: "GE2001" }] },
+      });
+      expect(unmatched.result).toEqual([]);
+      const missing = await client.request("textDocument/codeAction", {
+        textDocument: { uri },
+        range: { start: { line: 0, character: 0 }, end: { line: 0, character: 20 } },
+        context: { diagnostics: [] },
+      });
+      expect(missing.result).toEqual([]);
     } finally {
       await client.close();
     }

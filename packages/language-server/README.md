@@ -24,6 +24,7 @@ The package also exposes the `geulion-language-server` executable when installed
 - Full document synchronization, versioned open/change/close notifications, and compiler diagnostics
 - Keyword, built-in, and in-file function completion
 - Built-in signature help, semantic hover, function definition, semantic document highlights, document symbols, and function folding ranges
+- LSP quick fixes for recognized compiler guidance: a sole top-level function without `시작` can be renamed to the required entrypoint; ambiguous programs and all other diagnostic hints remain informational
 - Full and incremental semantic tokens for keywords, strings, numbers, operators, punctuation, and comments, encoded for the negotiated position format; delta snapshots are capped at four per open document
 - Workspace symbol search across `.geul` files under the negotiated workspace folders (or `rootUri`), with open buffers taking precedence
 - Semantic references and rename edits checked by the GEULION compiler before being returned
