@@ -1,4 +1,4 @@
-/* global TextEncoder, console */
+/* global TextDecoder, TextEncoder, console */
 import assert from "node:assert/strict";
 import { createLocalStorageRepository } from "./storage.js";
 
@@ -69,4 +69,64 @@ const malformedStorage = memoryStorage(envelope({ kind: "integer", decimal: "01"
 assert.deepEqual(await createLocalStorageRepository(malformedStorage, "idle", "1.0.0").load(), {
   kind: "codec-error",
 });
-console.log("Idle save adapter: 14 assertions passed");
+
+const legacyStorage = memoryStorage(envelope());
+let migrationCount = 0;
+const migratedRepository = createLocalStorageRepository(legacyStorage, "idle", "1.1.0", {
+  "1.0.0": (oldValue) => {
+    migrationCount += 1;
+    return { kind: "list", values: [oldValue, { kind: "integer", decimal: "1700000000000" }] };
+  },
+});
+const migrated = await migratedRepository.load();
+assert.deepEqual(migrated, {
+  kind: "loaded",
+  value: {
+    kind: "list",
+    values: [savedValue, { kind: "integer", decimal: "1700000000000" }],
+  },
+  migrated: true,
+});
+assert.deepEqual(await migratedRepository.load(), { kind: "loaded", value: migrated.value });
+assert.equal(migrationCount, 1);
+assert.equal(JSON.parse(new TextDecoder().decode(legacyStorage.raw())).applicationVersion, "1.1.0");
+
+const migrationWriteFailureBytes = envelope();
+const migrationWriteFailureStorage = memoryStorage(migrationWriteFailureBytes);
+migrationWriteFailureStorage.fail();
+const migrationWriteFailureRepository = createLocalStorageRepository(
+  migrationWriteFailureStorage,
+  "idle",
+  "1.1.0",
+  { "1.0.0": () => savedValue },
+);
+assert.deepEqual(await migrationWriteFailureRepository.load(), { kind: "storage-error" });
+assert.deepEqual(migrationWriteFailureStorage.raw(), migrationWriteFailureBytes);
+assert.deepEqual(
+  await createLocalStorageRepository(memoryStorage(envelope()), "idle", "1.1.0", {
+    "1.0.0": () => {
+      throw new Error("invalid legacy game state");
+    },
+  }).load(),
+  { kind: "codec-error" },
+);
+const invalidMigrationBytes = envelope();
+const invalidMigrationStorage = memoryStorage(invalidMigrationBytes);
+assert.deepEqual(
+  await createLocalStorageRepository(invalidMigrationStorage, "idle", "1.1.0", {
+    "1.0.0": () => ({ kind: "integer", decimal: "01" }),
+  }).load(),
+  { kind: "codec-error" },
+);
+assert.deepEqual(invalidMigrationStorage.raw(), invalidMigrationBytes);
+const extendedEnvelopeStorage = memoryStorage(envelope());
+const extendedEnvelope = JSON.parse(new TextDecoder().decode(extendedEnvelopeStorage.raw()));
+extendedEnvelope.extra = "unexpected";
+const extendedEnvelopeBytes = encoder.encode(JSON.stringify(extendedEnvelope));
+const invalidEnvelopeStorage = memoryStorage(extendedEnvelopeBytes);
+assert.deepEqual(
+  await createLocalStorageRepository(invalidEnvelopeStorage, "idle", "1.0.0").load(),
+  { kind: "codec-error" },
+);
+assert.deepEqual(invalidEnvelopeStorage.raw(), extendedEnvelopeBytes);
+console.log("Idle save adapter: migration and preservation checks passed");
