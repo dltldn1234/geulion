@@ -3,17 +3,17 @@
 ## Current status
 
 - Current Phase: 10 — Language Server reliability and editor-workflow expansion
-- Current Issue: [#132 — Cover cross-file symbol cache invalidation](https://github.com/dltldn1234/geulion/issues/132)
-- Working branch: `132-test/cross-file-cache-invalidation`
+- Current Issue: [#134 — Record cross-file cache test merge progress](https://github.com/dltldn1234/geulion/issues/134)
+- Working branch: `134-docs/progress-cache-test`
 - Initial baseline SHA: `afc1b41`
 - Initial main commit count: 58
-- Latest verified main SHA: `b2aec060f65da539d61ff2b524ec0a0a9497d3cb` (2026-11-09; fetched from origin after PR #131 merge)
-- Current unique commits reachable from main: 238 (58 initial + 180)
-- New commits reachable from baseline `afc1b41`: 180
-- Local unmerged Issue #132 commits: 0 (test and ledger update not yet committed).
-- Remaining to minimum 300: 62
-- Remaining to primary 400: 162
-- Remaining to extended 500: 262
+- Latest verified main SHA: `1d679bd3382a09766f39ba696949ed12813f5770` (2026-11-09; fetched from origin after PR #133 merge)
+- Current unique commits reachable from main: 240 (58 initial + 182)
+- New commits reachable from baseline `afc1b41`: 182
+- Local unmerged Issue #134 commits: 0 (progress-ledger update not yet committed).
+- Remaining to minimum 300: 60
+- Remaining to primary 400: 160
+- Remaining to extended 500: 260
 - Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed; [#36](https://github.com/dltldn1234/geulion/pull/36), Merge Commit `04a72ba`, CI passed; [#38](https://github.com/dltldn1234/geulion/pull/38), Merge Commit `0eb762f587a9aae70e9fb539513fcbd5959ca2b1`, CI passed; [#40](https://github.com/dltldn1234/geulion/pull/40), Merge Commit `cc62261e93b67b2519e01e9895a77111680101c1`, CI run `42508397430` passed; [#42](https://github.com/dltldn1234/geulion/pull/42), Merge Commit `30f9f5c07d563fd5867e92cdc5924f56b7cd0b7e`, CI run `42534464926` passed; [#44](https://github.com/dltldn1234/geulion/pull/44), Merge Commit `6b30d98f534c0ff8c3acbbdca50086f0fd9ff325`, CI run `42536546327` passed; [#46](https://github.com/dltldn1234/geulion/pull/46), Merge Commit `de9df5bc305966999609c32cc676f0fe59574df6`, CI run `42538207631` passed; [#48](https://github.com/dltldn1234/geulion/pull/48), Merge Commit `1b0f3f7daa75322516a25ee1c0a87c85d27a4e36`, CI run `42540812517` passed; [#50](https://github.com/dltldn1234/geulion/pull/50), Merge Commit `852915e29178de5475a072a75e2201fa2dc0a36c`, CI run `42542499311` passed; [#52](https://github.com/dltldn1234/geulion/pull/52), Merge Commit `77ae9fe05bb7b4b711fdc642b90f708506d9eb12`, CI run `42543552208` passed; [#54](https://github.com/dltldn1234/geulion/pull/54), Merge Commit `9d3fa6dbc7daa693dbf3d1f7d6e82d3f84eaaeb1`, CI run `42546017229` passed; [#56](https://github.com/dltldn1234/geulion/pull/56), Merge Commit `a5e7aa1471a875be5bb41ef1518a8de550161700`, CI run `42548068173` passed; [#58](https://github.com/dltldn1234/geulion/pull/58), Merge Commit `e22138a0b86a8c0a5b484f58a4e522411d06fa5f`, CI run `42551438200` passed; [#60](https://github.com/dltldn1234/geulion/pull/60), Merge Commit `393ea42803152555e3b8d28ec0891d8421b8b8fe`, CI run `42552939016` passed; [#62](https://github.com/dltldn1234/geulion/pull/62), Merge Commit `b3a6ef15f54ed274852e801fdb6e50ebfb53c901`, CI run `42554061977` passed; [#64](https://github.com/dltldn1234/geulion/pull/64), Merge Commit `9b36d6e1f99c79ecd7643d4ed9d11b732c7091e5`, CI run `42554755892` passed; [#66](https://github.com/dltldn1234/geulion/pull/66), Merge Commit `a095ddd205034d95249bc03932368e97ad20b3b9`, CI run `42555621830` passed; [#68](https://github.com/dltldn1234/geulion/pull/68), Merge Commit `5ea8d3fa2862ec199173fdae5c7cc85ee1e7e3a3`, CI run `42556270362` passed; [#70](https://github.com/dltldn1234/geulion/pull/70), Merge Commit `55662e2eaab49a63a497207eee91b3b915cb5f21`, CI run `42558581415` passed; [#72](https://github.com/dltldn1234/geulion/pull/72), Merge Commit `99094715bab6327056addeee0cd0f4d482ee7e82`, CI run `42559536742` passed; [#74](https://github.com/dltldn1234/geulion/pull/74), Merge Commit `43702585d2fddb5653b2df584162d7033e834fcf`, CI run `42563653079` passed.; [#76](https://github.com/dltldn1234/geulion/pull/76), Merge Commit `9472b625266222253cf422c24f352ce1e9f41472`, CI passed.
 - Latest merged slice: [PR #80](https://github.com/dltldn1234/geulion/pull/80), Merge Commit `c1f868b59948711084588332bec4f7c7f992e5fd`, CI run `42576077086` passed; Issue #79 closed as completed.
 - [PR #82](https://github.com/dltldn1234/geulion/pull/82) completed Issue #81 workspace symbol search and merged as `bfb4effefb1fac3181b21d0f897028eac74e9d3a`; CI passed and Issue #81 is closed.
@@ -108,6 +108,7 @@
 - Issue #126 proposes the v0.4 multi-file module and import system. PR #127 CI run `42610684566` passed and merged as `251d663aa2fb94de9b9b5969245f16bde33c7dc1`; the RFC remains Proposed, not normative or implemented.
 - Issue #128 records PR #127 and the verified 234-commit main snapshot. PR #129 CI run `42610951040` passed and merged as `8871138ac1694ccaeb5cba6f19c93d19d4543ce4`; Issue #128 is closed.
 - Issue #130 records PR #129 and the verified 236-commit main snapshot. PR #131 CI run `42611208879` passed and merged as `b2aec060f65da539d61ff2b524ec0a0a9497d3cb`; Issue #130 is closed.
+- Issue #132 verifies cross-file AST cache refresh when a closed source file changes and is restored on disk. PR #133 CI run `42611536244` passed and merged as `1d679bd3382a09766f39ba696949ed12813f5770`; Issue #132 is closed.
 
 ## Known limitations
 
@@ -117,7 +118,7 @@
 
 ## Next
 
-1. Complete Issue #132 disk-change cache regression coverage and merge after CI.
+1. Complete Issue #134 progress-ledger update, CI, and merge.
 2. Confirm the RFC recommendations for v0.4 module syntax, paths, cycles, and output before implementing language semantics.
 
 ## Commit growth tracking
