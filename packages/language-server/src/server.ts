@@ -742,7 +742,10 @@ function visitCallExpressions(value: unknown, visit: (call: CallExpressionNode) 
     return;
   }
   if (typeof value !== "object" || value === null) return;
-  if ("kind" in value && value.kind === "CallExpression") visit(value as CallExpressionNode);
+  if ("kind" in value && value.kind === "CallExpression") {
+    const call = value as CallExpressionNode;
+    if (call.namespace === null) visit(call);
+  }
   Object.values(value).forEach((child) => visitCallExpressions(child, visit));
 }
 

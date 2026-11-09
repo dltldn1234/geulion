@@ -38,6 +38,13 @@ describe("semantic name resolution", () => {
     expect(result.program.exports.some(({ name }) => name === "비공개")).toBe(false);
   });
 
+  it("rejects project imports through the single-source resolver", () => {
+    const result = resolveText(`가져오기 "./도구.geul" 별칭 도구
+함수 시작() -> 없음 {}`);
+    expect(result.success).toBe(false);
+    expect(result.diagnostics[0]).toMatchObject({ code: "GE2011", phase: "resolve" });
+  });
+
   it("requires v0.3 for public declarations and keeps duplicate normalized exports invalid", () => {
     const olderVersion = resolveText("공개 함수 계산() -> 없음 {}\n함수 시작() -> 없음 {}", "0.2");
     expect(olderVersion.diagnostics.map(({ code }) => code)).toEqual(["GE2004"]);

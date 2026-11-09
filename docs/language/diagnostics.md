@@ -124,7 +124,7 @@
 | `GE2008` | 중복 import/별칭 또는 별칭과 로컬/prelude 이름 충돌        | resolve |
 | `GE2009` | 알 수 없는 별칭/공개 함수 또는 비공개 함수 접근            | resolve |
 | `GE2010` | 모듈 위치에 따른 `시작` 규칙 또는 entrypoint 시그니처 위반 | resolve |
-| `GE2011` | v0.1–v0.3에서 import 선언 사용                             | resolve |
+| `GE2011` | v0.1–v0.3 단일 파일 API에서 v0.4 import/한정 호출 사용     | resolve |
 
 ## 진단 순서와 중단
 

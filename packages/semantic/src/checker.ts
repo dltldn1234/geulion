@@ -127,6 +127,7 @@ export function checkResolvedProgram(resolution: ResolutionResult): AnalysisResu
         return s ? (symbolTypes.get(s.id) ?? ERROR) : ERROR;
       }
       case "CallExpression": {
+        if (node.namespace !== null) return ERROR;
         const s = resolved(node.callee);
         return s && (s.kind === "function" || s.kind === "prelude")
           ? s.signature.returnType
@@ -294,6 +295,11 @@ export function checkResolvedProgram(resolution: ResolutionResult): AnalysisResu
         break;
       }
       case "CallExpression": {
+        if (node.namespace !== null) {
+          node.arguments.forEach((argument) => check(argument));
+          type = ERROR;
+          break;
+        }
         const symbol = resolved(node.callee);
         if (!symbol || (symbol.kind !== "function" && symbol.kind !== "prelude")) {
           node.arguments.forEach((a) => check(a));

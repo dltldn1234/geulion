@@ -35,6 +35,58 @@ describe("GEULION parser", () => {
     },
   );
 
+  it("parses contextual imports and one-level qualified function calls", () => {
+    const ast = parsedProgram(`가져오기 "./수학.geul" 별칭 수학
+공개 함수 결과(값: 정수) -> 정수 { 반환 수학.더하기(값, 1) }
+함수 시작() -> 없음 { 수학.더하기(2, 3) }`);
+
+    expect(ast.imports).toMatchObject([
+      {
+        kind: "ImportDeclaration",
+        path: "./수학.geul",
+        alias: { raw: "수학", normalized: "수학" },
+      },
+    ]);
+    expect(ast.imports[0]?.span.start).toEqual(ast.span.start);
+    expect(ast.functions[0]?.body.statements[0]).toMatchObject({
+      kind: "ReturnStatement",
+      value: {
+        kind: "CallExpression",
+        namespace: { raw: "수학" },
+        callee: { raw: "더하기" },
+        arguments: [
+          { kind: "IdentifierExpression", name: { raw: "값" } },
+          { kind: "IntegerLiteralExpression" },
+        ],
+      },
+    });
+    expect(ast.functions[1]?.body.statements[0]).toMatchObject({
+      kind: "ExpressionStatement",
+      expression: { kind: "CallExpression", namespace: { raw: "수학" }, callee: { raw: "더하기" } },
+    });
+  });
+
+  it.each([
+    ["가져오기 12 별칭 수학", "GE1003"],
+    ['가져오기 "./수학.geul" 수학', "GE1003"],
+    ['가져오기 "./수학.geul" 별칭', "GE1003"],
+    ['함수 시작() -> 없음 {}\n가져오기 "./수학.geul" 별칭 수학', "GE1003"],
+    ['함수 시작() -> 없음 {} 가져오기 "./수학.geul" 별칭 수학', "GE1003"],
+    ["함수 시작() -> 없음 { 수학.고급.더하기() }", "GE1001"],
+  ])("rejects unsupported module syntax with a stable parser diagnostic", (source, code) => {
+    const result = parseText(source);
+    expect(result.success).toBe(false);
+    expect(result.diagnostics[0]).toMatchObject({ code, phase: "parse" });
+  });
+
+  it("keeps contextual module words usable as ordinary identifiers", () => {
+    const ast = parsedProgram(
+      `함수 시작() -> 없음 { 변수 가져오기 = 1; 변수 별칭 = 가져오기; 출력(별칭) }`,
+    );
+    expect(ast.imports).toEqual([]);
+    expect(ast.functions[0]?.body.statements).toHaveLength(3);
+  });
+
   it("parses P-001 declarations, inferred bindings, calls, and if/else blocks", () => {
     const ast = parsedProgram(`함수 더하기(가: 정수, 나: 정수) -> 정수 {
     반환 가 + 나

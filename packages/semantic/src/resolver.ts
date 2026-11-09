@@ -83,7 +83,7 @@ export function resolveProgram(
   let scopeId = 0;
 
   function report(
-    code: "GE2001" | "GE2002" | "GE2003" | "GE2004",
+    code: "GE2001" | "GE2002" | "GE2003" | "GE2004" | "GE2011",
     message: string,
     span: SourceSpan,
     prior?: SemanticSymbol,
@@ -100,12 +100,18 @@ export function resolveProgram(
             ? "정확히 하나의 비공개 `함수 시작() -> 없음`을 선언하세요."
             : code === "GE2004"
               ? "`--language-version 0.3`을 선택하세요."
-              : "현재 범위의 선언과 이름을 확인하세요.",
+              : code === "GE2011"
+                ? "모듈 문법은 아직 프로젝트 컴파일에서만 지원됩니다. 단일 파일 검사에는 v0.1-v0.3 문법을 사용하세요."
+                : "현재 범위의 선언과 이름을 확인하세요.",
         related: prior?.span
           ? [{ message: "이전에 선언한 위치입니다.", path, range: prior.span }]
           : [],
       }),
     );
+  }
+
+  for (const declaration of ast.imports) {
+    report("GE2011", "단일 파일 컴파일은 다른 모듈을 가져올 수 없습니다.", declaration.pathSpan);
   }
 
   const prelude: [string, readonly (GeulType | null)[], GeulType][] = [
@@ -252,7 +258,13 @@ export function resolveProgram(
         use(node.name, scope);
         return;
       case "CallExpression":
-        use(node.callee, scope, true);
+        if (node.namespace !== null) {
+          report(
+            "GE2011",
+            "한정 함수 호출은 아직 프로젝트 컴파일에서 지원되지 않습니다.",
+            node.namespace.span,
+          );
+        } else use(node.callee, scope, true);
         node.arguments.forEach((n) => expression(n, scope));
         return;
       case "GroupingExpression":

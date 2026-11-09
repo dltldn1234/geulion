@@ -26,6 +26,7 @@ import type {
   IdentifierName,
   IfStatementNode,
   IndexExpressionNode,
+  ImportDeclarationNode,
   IntegerLiteralExpressionNode,
   ListExpressionNode,
   ParameterNode,
@@ -168,9 +169,28 @@ class RecursiveDescentParser {
   }
 
   parse(): ProgramNode {
+    const imports: ImportDeclarationNode[] = [];
     const functions: FunctionDeclarationNode[] = [];
     this.#skipSeparators();
     while (!this.#at(TokenKind.EndOfFile)) {
+      if (this.#isContextualIdentifier("가져오기")) {
+        if (functions.length > 0) {
+          this.#fail(
+            "GE1003",
+            "import 선언은 함수 선언보다 먼저 와야 합니다.",
+            "모든 `가져오기` 선언을 최상위 함수보다 앞에 두세요.",
+          );
+        }
+        imports.push(this.#parseImportDeclaration());
+        if (!this.#at(TokenKind.EndOfFile) && !this.#skipSeparators()) {
+          this.#fail(
+            "GE1003",
+            "import 선언 뒤에 문장 구분자가 필요합니다.",
+            "import 선언을 줄바꿈 또는 `;`로 구분하세요.",
+          );
+        }
+        continue;
+      }
       let visibility: FunctionDeclarationNode["visibility"] = "private";
       if (
         this.#at(TokenKind.Identifier) &&
@@ -194,6 +214,13 @@ class RecursiveDescentParser {
         );
       }
       functions.push(this.#parseFunctionDeclaration(visibility));
+      if (this.#isContextualIdentifier("가져오기")) {
+        this.#fail(
+          "GE1003",
+          "import 선언은 함수 선언보다 먼저 와야 합니다.",
+          "모든 `가져오기` 선언을 최상위 함수보다 앞에 두세요.",
+        );
+      }
       if (!this.#at(TokenKind.EndOfFile) && !this.#skipSeparators()) {
         this.#fail(
           "GE1002",
@@ -203,8 +230,52 @@ class RecursiveDescentParser {
       }
     }
     const eof = this.#current();
-    const start = functions[0]?.span.start ?? eof.span.start;
-    return { kind: "Program", functions, span: Object.freeze({ start, end: eof.span.end }) };
+    const start = imports[0]?.span.start ?? functions[0]?.span.start ?? eof.span.start;
+    return {
+      kind: "Program",
+      imports,
+      functions,
+      span: Object.freeze({ start, end: eof.span.end }),
+    };
+  }
+
+  #parseImportDeclaration(): ImportDeclarationNode {
+    const start = this.#advance();
+    const pathToken = this.#current();
+    if (pathToken.kind !== TokenKind.StringLiteral) {
+      this.#fail(
+        "GE1003",
+        "import 경로는 문자열이어야 합니다.",
+        '`가져오기 "./경로.geul" 별칭 이름` 형식으로 작성하세요.',
+      );
+    }
+    this.#advance();
+    if (!this.#isContextualIdentifier("별칭")) {
+      this.#fail(
+        "GE1003",
+        "import 경로 뒤에 `별칭`이 필요합니다.",
+        "`별칭` 뒤에 모듈 이름을 적으세요.",
+      );
+    }
+    this.#advance();
+    const aliasToken = this.#current();
+    if (aliasToken.kind !== TokenKind.Identifier) {
+      this.#fail("GE1003", "import 별칭 이름이 필요합니다.", "모듈 별칭으로 식별자를 사용하세요.");
+    }
+    this.#advance();
+    const alias = this.#identifierName(aliasToken);
+    return {
+      kind: "ImportDeclaration",
+      path: pathToken.value,
+      pathSpan: pathToken.span,
+      alias,
+      span: joinedSpan(start.span, aliasToken.span),
+    };
+  }
+
+  #isContextualIdentifier(name: string): boolean {
+    const token = this.#current();
+    return token.kind === TokenKind.Identifier && token.normalizedName === name;
   }
 
   #parseFunctionDeclaration(
@@ -378,7 +449,8 @@ class RecursiveDescentParser {
         return this.#parseBlock();
       case TokenKind.Identifier:
         if (this.#peek(1).kind === TokenKind.Assign) return this.#parseAssignment();
-        if (this.#peek(1).kind === TokenKind.LeftParen) return this.#parseCallStatement();
+        if (this.#peek(1).kind === TokenKind.LeftParen || this.#peek(1).kind === TokenKind.Dot)
+          return this.#parseCallStatement();
         return this.#fail(
           "GE1001",
           "식별자로 시작하는 문장은 대입 또는 함수 호출이어야 합니다.",
@@ -427,7 +499,7 @@ class RecursiveDescentParser {
   }
 
   #parseCallStatement(): ExpressionStatementNode {
-    const expression: CallExpressionNode = this.#parseCallExpression();
+    const expression = this.#parseCallExpression();
     return { kind: "ExpressionStatement", expression, span: expression.span };
   }
 
@@ -569,7 +641,8 @@ class RecursiveDescentParser {
     switch (token.kind) {
       case TokenKind.Identifier: {
         const identifier = token as IdentifierToken;
-        if (this.#peek(1).kind === TokenKind.LeftParen) return this.#parseCallExpression();
+        if (this.#peek(1).kind === TokenKind.LeftParen || this.#peek(1).kind === TokenKind.Dot)
+          return this.#parseCallExpression();
         this.#advance();
         const name = this.#identifierName(identifier);
         const node: IdentifierExpressionNode = {
@@ -748,8 +821,29 @@ class RecursiveDescentParser {
   }
 
   #parseCallExpression(): CallExpressionNode {
-    const nameToken = this.#expectIdentifier("함수 이름이 필요합니다.");
-    const callee = this.#identifierName(nameToken);
+    const firstToken = this.#expectIdentifier("함수 이름이 필요합니다.");
+    let namespace: IdentifierName | null = null;
+    let calleeToken = firstToken;
+    if (this.#at(TokenKind.Dot)) {
+      namespace = this.#identifierName(firstToken);
+      this.#advance();
+      calleeToken =
+        this.#current().kind === TokenKind.Identifier
+          ? (this.#advance() as IdentifierToken)
+          : this.#fail(
+              "GE1001",
+              "모듈 별칭 뒤에 공개 함수 이름이 필요합니다.",
+              "`별칭.함수이름(...)` 형식으로 작성하세요.",
+            );
+      if (this.#at(TokenKind.Dot)) {
+        this.#fail(
+          "GE1001",
+          "한정 호출은 모듈 별칭과 함수 이름 한 단계만 허용합니다.",
+          "`별칭.함수이름(...)` 형식으로 작성하세요.",
+        );
+      }
+    }
+    const callee = this.#identifierName(calleeToken);
     this.#expect(TokenKind.LeftParen, "함수 호출에 `(`가 필요합니다.");
     this.#skipNewlines();
     const args: ExpressionNode[] = [];
@@ -767,12 +861,8 @@ class RecursiveDescentParser {
       TokenKind.RightParen,
       "함수 호출 인자 목록이 `)`로 닫히지 않았습니다.",
     );
-    return {
-      kind: "CallExpression",
-      callee,
-      arguments: args,
-      span: joinedSpan(nameToken.span, close.span),
-    };
+    const span = joinedSpan(firstToken.span, close.span);
+    return { kind: "CallExpression", namespace, callee, arguments: args, span };
   }
 
   #identifierName(token: IdentifierToken): IdentifierName {

@@ -280,14 +280,18 @@ describe("GEULION Language Server Protocol", () => {
     const root = await mkdtemp(join(tmpdir(), "geulion-lsp-cross-file-symbols-"));
     const libraryPath = join(root, "library.geul");
     const mainPath = join(root, "main.geul");
+    const qualifiedPath = join(root, "qualified.geul");
     const libraryText = "함수 도우미(값: 정수) -> 정수 { 반환 값 }";
     const mainText = "함수 시작() -> 없음 { 출력(도우미(3)) }";
+    const qualifiedText = "함수 시작() -> 없음 { 출력(모듈.도우미(3)) }";
     const libraryUri = pathToFileURL(libraryPath).toString();
     const mainUri = pathToFileURL(mainPath).toString();
+    const qualifiedUri = pathToFileURL(qualifiedPath).toString();
     const client = new LspClient();
     try {
       await writeFile(libraryPath, libraryText);
       await writeFile(mainPath, mainText);
+      await writeFile(qualifiedPath, qualifiedText);
       const initialized = await client.request("initialize", {
         capabilities: {},
         workspaceFolders: [{ uri: pathToFileURL(root).toString(), name: "GEULION" }],
@@ -307,6 +311,17 @@ describe("GEULION Language Server Protocol", () => {
             textDocument: { uri: mainUri, languageId: "geulion", version: 1, text: mainText },
           },
         },
+        {
+          method: "textDocument/didOpen",
+          params: {
+            textDocument: {
+              uri: qualifiedUri,
+              languageId: "geulion",
+              version: 1,
+              text: qualifiedText,
+            },
+          },
+        },
       );
 
       const definition = await client.request("textDocument/definition", {
@@ -317,6 +332,12 @@ describe("GEULION Language Server Protocol", () => {
         uri: libraryUri,
         range: { start: { line: 0, character: libraryText.indexOf("도우미") } },
       });
+
+      const qualifiedDefinition = await client.request("textDocument/definition", {
+        textDocument: { uri: qualifiedUri },
+        position: { line: 0, character: qualifiedText.indexOf("도우미") },
+      });
+      expect(qualifiedDefinition.result).toBeNull();
 
       const references = await client.request("textDocument/references", {
         textDocument: { uri: libraryUri },
