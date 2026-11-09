@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import { createWholeSecondClock } from "./clock.js";
 
 const output = await mkdtemp(join(tmpdir(), "geulion-idle-"));
 try {
@@ -44,7 +45,17 @@ try {
   state = game.invoke("경과", [state, int(10_000)]).value;
   state = game.invoke("업그레이드", [state]).value;
   assert.deepEqual(values(state), [0, 1, 2, 20, 10, 15]);
-  console.log("Idle GEULION browser module: 10 assertions passed");
+  const clock = createWholeSecondClock();
+  assert.equal(clock.consume(400), 0);
+  assert.equal(clock.consume(400), 0);
+  assert.equal(clock.consume(250), 1000);
+  clock.reset();
+  let producedMilliseconds = 0;
+  for (let frame = 0; frame < 60; frame += 1) {
+    producedMilliseconds += clock.consume(1000 / 60);
+  }
+  assert.equal(producedMilliseconds, 1000);
+  console.log("Idle GEULION browser module: 14 assertions passed");
 } finally {
   await rm(output, { recursive: true, force: true });
 }

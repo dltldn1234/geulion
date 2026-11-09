@@ -1,6 +1,7 @@
 /* global TextDecoder, TextEncoder, document, performance, window */
 import { createModule } from "./generated/game.mjs";
 import { createLocalStorageRepository } from "./storage.js";
+import { createWholeSecondClock } from "./clock.js";
 
 const SAVE_KEY = "geulion-idle-save";
 const APPLICATION_VERSION = "1.0.0";
@@ -34,7 +35,18 @@ const unwrapList = (value) => {
       "저장 데이터의 게임 상태 형식이 올바르지 않습니다. 원본 저장은 그대로 보존했습니다.",
     );
   }
-  return value.values.map((item) => Number(item.decimal));
+  const values = value.values.map((item) => BigInt(item.decimal));
+  if (
+    values[0] < 0n ||
+    values[1] < 1n ||
+    values[2] < 0n ||
+    values[3] < 10n ||
+    values[4] < 0n ||
+    values[5] < 0n
+  ) {
+    throw new Error("저장된 게임 통계 범위가 올바르지 않습니다. 원본 저장은 그대로 보존했습니다.");
+  }
+  return values;
 };
 const invoke = (name, args = []) => {
   const result = game.invoke(name, args);
@@ -50,9 +62,10 @@ const invoke = (name, args = []) => {
 };
 let state = null;
 let lastTick = performance.now();
-let tickRemainder = 0;
+const gameClock = createWholeSecondClock();
 let lastPersistedAt = 0;
 let saveBusy = false;
+let savePending = false;
 let toastTimer;
 
 function showToast(message) {
@@ -68,10 +81,18 @@ function showSaveStatus(message, error = false) {
   badge.classList.toggle("error", error);
 }
 async function persist() {
-  if (state === null || saveBusy) return false;
+  if (state === null) return false;
+  if (saveBusy) {
+    savePending = true;
+    return false;
+  }
   saveBusy = true;
   const result = await repository.save(list(state));
   saveBusy = false;
+  if (savePending) {
+    savePending = false;
+    void persist();
+  }
   if (result.kind !== "saved") {
     showSaveStatus(STORAGE_ERROR, true);
     showToast("저장에 실패했습니다. 브라우저 저장 공간을 확인해 주세요.");
@@ -94,8 +115,8 @@ function render() {
     "ko-KR",
   );
   document.querySelector("#upgrade").disabled = amount < cost;
-  document.querySelector("#progress").style.width =
-    `${Math.min(100, Math.floor((amount / cost) * 100))}%`;
+  const progress = amount >= cost ? 100n : (amount * 100n) / cost;
+  document.querySelector("#progress").style.width = `${progress}%`;
 }
 function applyAction(name, args = []) {
   try {
@@ -108,16 +129,14 @@ function applyAction(name, args = []) {
   }
 }
 function tick(now) {
-  const elapsed = Math.max(0, Math.min(10_000, now - lastTick));
+  const elapsed = Math.max(0, now - lastTick);
   lastTick = now;
-  tickRemainder += elapsed;
-  const wholeMilliseconds = Math.floor(tickRemainder);
-  tickRemainder -= wholeMilliseconds;
+  const wholeMilliseconds = gameClock.consume(elapsed);
   if (wholeMilliseconds > 0) {
     state = unwrapList(invoke("경과", [list(state), integer(wholeMilliseconds)]));
     render();
   }
-  if (now - lastPersistedAt >= 5000 && !saveBusy) void persist();
+  if (now - lastPersistedAt >= 5000) void persist();
   window.requestAnimationFrame(tick);
 }
 
@@ -137,7 +156,7 @@ document.querySelector("#reset").addEventListener("click", async () => {
     return;
   }
   state = unwrapList(fresh);
-  tickRemainder = 0;
+  gameClock.reset();
   render();
   showSaveStatus("새 게임 시작");
 });
