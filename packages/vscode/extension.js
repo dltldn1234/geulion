@@ -1,9 +1,10 @@
-/* global module, require */
+/* global TextEncoder, module, require */
 /* eslint-disable @typescript-eslint/no-require-imports -- VS Code injects its API through CommonJS. */
 const { spawn } = require("node:child_process");
 const path = require("node:path");
 
 const LANGUAGE_VERSIONS = new Set(["0.1", "0.2", "0.3"]);
+let compilerModulePromise;
 const KEYWORDS = [
   "상수",
   "변수",
@@ -316,7 +317,82 @@ function activate(context, vscodeApi, spawnProcess = spawn) {
     };
     context.subscriptions.push(vscode.languages.registerHoverProvider("geulion", hoverProvider));
   }
+  if (vscode.languages?.registerDefinitionProvider) {
+    const definitionProvider = {
+      async provideDefinition(document, position) {
+        const analysis = await analyzeDocument(document, vscode);
+        if (!analysis?.success) return undefined;
+        const offset = document.offsetAt(position);
+        for (const [reference, symbolId] of analysis.program.references) {
+          if (offset < reference.span.start.utf16Offset || offset >= reference.span.end.utf16Offset)
+            continue;
+          const symbol = analysis.program.symbols.get(symbolId);
+          if (!symbol?.span) return undefined;
+          return new vscode.Location(document.uri, sourceRange(symbol.span, vscode));
+        }
+        return undefined;
+      },
+    };
+    context.subscriptions.push(
+      vscode.languages.registerDefinitionProvider("geulion", definitionProvider),
+    );
+  }
+  if (vscode.languages?.registerDocumentSymbolProvider) {
+    const documentSymbolProvider = {
+      async provideDocumentSymbols(document) {
+        const analysis = await analyzeDocument(document, vscode);
+        if (!analysis?.success) return [];
+        return analysis.program.ast.functions.map((fn) => {
+          const parameters = fn.parameters
+            .map((parameter) => `${parameter.name.raw}: ${formatTypeNode(parameter.type)}`)
+            .join(", ");
+          const detail = `${fn.visibility === "public" ? "공개 " : ""}함수 ${fn.name.raw}(${parameters}) -> ${formatTypeNode(fn.returnType)}`;
+          return new vscode.DocumentSymbol(
+            fn.name.raw,
+            detail,
+            vscode.SymbolKind.Function,
+            sourceRange(fn.span, vscode),
+            sourceRange(fn.name.span, vscode),
+          );
+        });
+      },
+    };
+    context.subscriptions.push(
+      vscode.languages.registerDocumentSymbolProvider("geulion", documentSymbolProvider),
+    );
+  }
   return { output };
+}
+
+async function analyzeDocument(document, vscode) {
+  const configuration = vscode.workspace.getConfiguration("geulion", document.uri);
+  const version = configuration.get("languageVersion", "0.1");
+  if (typeof version !== "string" || !LANGUAGE_VERSIONS.has(version)) return undefined;
+  try {
+    compilerModulePromise ??= import("@geulion/compiler");
+    const { checkSource } = await compilerModulePromise;
+    const source = document.getText();
+    return checkSource({
+      path: document.uri.fsPath ?? document.uri.path ?? "<editor>",
+      source: new TextEncoder().encode(source),
+      languageVersion: version,
+    });
+  } catch {
+    return undefined;
+  }
+}
+
+function sourceRange(span, vscode) {
+  return new vscode.Range(
+    new vscode.Position(span.start.line - 1, span.start.column - 1),
+    new vscode.Position(span.end.line - 1, span.end.column - 1),
+  );
+}
+
+function formatTypeNode(type) {
+  return type.kind === "PrimitiveType"
+    ? type.name
+    : `${type.collection}[${formatTypeNode(type.elementType)}]`;
 }
 
 function findActiveCall(source, cursorOffset) {
