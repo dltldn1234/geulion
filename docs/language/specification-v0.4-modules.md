@@ -59,12 +59,12 @@ Qualified calls permit exactly one namespace alias and one exported function nam
 
 ## 3. Import identity and path resolution
 
-- Import paths MUST be quoted relative paths beginning with `./` or `../` and MUST end in the exact `.geul` extension. Absolute paths, drive paths, URL schemes, package names, environment expansion, globbing, and implicit extension lookup are invalid.
+- Import paths MUST be quoted relative paths beginning with `./` or `../` and MUST end in the exact `.geul` extension. `/` is the only path separator; backslashes are invalid. Absolute paths, drive paths, URL schemes, package names, environment expansion, globbing, and implicit extension lookup are invalid.
 - A path is resolved relative to the importing module's directory, then canonicalized relative to the explicit project root. The project root is an absolute host path at the API boundary; source-map and diagnostic paths are normalized project-relative paths using `/`.
 - Canonicalization removes `.` components and resolves `..` components lexically. The resulting path MUST remain beneath the root; equality with the root itself is not a module path. Root escape is an error even if the file exists.
 - v0.4 forbids symlink traversal in any component from the root to an imported source. A host that supplies a virtual source map MUST apply the same path identity rules to its keys.
 - Path component spelling is case-sensitive. A file differing only by case MUST NOT be selected as a fallback. Implementations on case-insensitive filesystems MUST diagnose a spelling mismatch rather than silently bind it.
-- Module identity is its canonical project-relative path. Repeated imports that canonicalize to the same path refer to the same module. The same module path MUST NOT appear more than once in one module's import list, including aliases to the same target.
+- Module identity is its canonical project-relative path. Project source-map keys and the entry path MUST use this canonical form: relative to the root, `/`-separated, and without `.` or `..` components. Repeated imports that canonicalize to the same path refer to the same module. The same module path MUST NOT appear more than once in one module's import list, including aliases to the same target.
 - Only the transitive import closure of the entry is loaded or compiled. Unreferenced source files are ignored. Missing or unreadable reachable sources are diagnostics.
 
 An import's alias MUST be unique within the importing module and MUST NOT collide after NFC normalization with a local function name, another alias, or a prelude name available as an unqualified function. Imported modules expose only public function declarations.
@@ -80,7 +80,7 @@ An import's alias MUST be unique within the importing module and MUST NOT collid
 
 ## 5. Project API, CLI, and artifacts
 
-A project compiler MUST expose an API alongside the current single-source API. Its input MUST provide an entry path, root path, finite source map/provider, version `"0.4"`, and optional target `"node" | "browser"`. The API MUST remain deterministic for the same source bytes, canonical paths, options, and compiler version. The exact exported type names follow the compiler package's API conventions.
+A project compiler MUST expose an API alongside the current single-source API. Its input MUST provide an entry path in canonical project-relative form, an absolute host root path, a finite source map/provider keyed by canonical project-relative paths, version `"0.4"`, and optional target `"node" | "browser"`. The API MUST remain deterministic for the same source bytes, canonical paths, options, and compiler version. The exact exported type names follow the compiler package's API conventions.
 
 The CLI project forms are:
 
