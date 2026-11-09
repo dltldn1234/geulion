@@ -1,6 +1,9 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { Buffer } from "node:buffer";
-import { fileURLToPath } from "node:url";
+import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 
 type Message = Record<string, unknown>;
@@ -148,6 +151,120 @@ async function openEditorDocument(
 }
 
 describe("GEULION Language Server Protocol", () => {
+  it("searches closed workspace files with live disk results and open-buffer overlays", async () => {
+    const root = await mkdtemp(join(tmpdir(), "geulion-lsp-symbols-"));
+    const linkedSource = await mkdtemp(join(tmpdir(), "geulion-lsp-linked-"));
+    const client = new LspClient();
+    try {
+      const sourceDirectory = join(root, "src");
+      await mkdir(sourceDirectory);
+      for (const directory of [".git", "node_modules", "dist", "coverage"])
+        await mkdir(join(root, directory));
+      const closedPath = join(sourceDirectory, "closed.geul");
+      const editablePath = join(sourceDirectory, "editable.geul");
+      const textFilePath = join(sourceDirectory, "notes.txt");
+      await writeFile(join(linkedSource, "linked.geul"), "함수 링크대상() -> 없음 { }");
+      await symlink(linkedSource, join(root, "linked-source"));
+      await writeFile(closedPath, "함수 닫힌파일() -> 정수 { 반환 1 }");
+      await writeFile(editablePath, "함수 저장된이름() -> 정수 { 반환 2 }");
+      await writeFile(textFilePath, "함수 텍스트문서() -> 없음 { }");
+      for (const directory of [".git", "node_modules", "dist", "coverage"])
+        await writeFile(join(root, directory, "ignored.geul"), "함수 제외대상() -> 없음 { }");
+      await writeFile(join(sourceDirectory, "invalid-utf8.geul"), Buffer.from([0xff]));
+
+      const rootUri = pathToFileURL(root).toString();
+      const initialized = await client.request("initialize", {
+        capabilities: {},
+        rootUri,
+        workspaceFolders: [{ uri: rootUri, name: "GEULION" }],
+      });
+      expect(initialized.error).toBeUndefined();
+      client.notification("initialized");
+      const editableUri = pathToFileURL(editablePath).toString();
+      client.notification("textDocument/didOpen", {
+        textDocument: {
+          uri: editableUri,
+          languageId: "geulion",
+          version: 1,
+          text: "함수 편집중() -> 정수 { 반환 3 }",
+        },
+      });
+      client.notification("textDocument/didOpen", {
+        textDocument: {
+          uri: pathToFileURL(join(linkedSource, "outside.geul")).toString(),
+          languageId: "geulion",
+          version: 1,
+          text: "함수 워크스페이스외부() -> 없음 { }",
+        },
+      });
+      client.notification("textDocument/didOpen", {
+        textDocument: {
+          uri: pathToFileURL(textFilePath).toString(),
+          languageId: "plaintext",
+          version: 1,
+          text: "함수 제외확장자() -> 없음 { }",
+        },
+      });
+
+      const initial = await client.request("workspace/symbol", { query: "" });
+      expect((initial.result as { name: string }[]).map(({ name }) => name)).toEqual([
+        "닫힌파일",
+        "편집중",
+      ]);
+      const excludedExtension = await client.request("workspace/symbol", { query: "제외확장자" });
+      expect(excludedExtension.result).toEqual([]);
+
+      await writeFile(closedPath, "함수 디스크갱신() -> 정수 { 반환 4 }");
+      const refreshed = await client.request("workspace/symbol", { query: "디스크갱신" });
+      expect((refreshed.result as { name: string }[]).map(({ name }) => name)).toEqual([
+        "디스크갱신",
+      ]);
+      await writeFile(join(sourceDirectory, "added.geul"), "함수 새파일() -> 없음 { }");
+      const added = await client.request("workspace/symbol", { query: "새파일" });
+      expect((added.result as { name: string }[]).map(({ name }) => name)).toEqual(["새파일"]);
+
+      client.notification("textDocument/didClose", { textDocument: { uri: editableUri } });
+      const closedBuffer = await client.request("workspace/symbol", { query: "저장된이름" });
+      expect((closedBuffer.result as { name: string }[]).map(({ name }) => name)).toEqual([
+        "저장된이름",
+      ]);
+      const removed = await client.request("workspace/symbol", { query: "편집중" });
+      expect(removed.result).toEqual([]);
+
+      await rm(closedPath);
+      const deleted = await client.request("workspace/symbol", { query: "디스크갱신" });
+      expect(deleted.result).toEqual([]);
+      const ignored = await client.request("workspace/symbol", { query: "제외대상" });
+      expect(ignored.result).toEqual([]);
+    } finally {
+      await client.close();
+      await rm(root, { recursive: true, force: true });
+      await rm(linkedSource, { recursive: true, force: true });
+    }
+  });
+
+  it("uses rootUri when workspaceFolders is empty and isolates unreadable files", async () => {
+    const root = await mkdtemp(join(tmpdir(), "geulion-lsp-root-"));
+    const client = new LspClient();
+    try {
+      await writeFile(join(root, "valid.geul"), "함수 정상() -> 정수 { 반환 1 }");
+      await writeFile(join(root, "invalid.geul"), Buffer.from([0xff]));
+      const response = await client.request("initialize", {
+        capabilities: {},
+        rootUri: pathToFileURL(root).toString(),
+        workspaceFolders: [{ uri: "untitled:untitled-1", name: "Untitled" }],
+      });
+      expect(response.error).toBeUndefined();
+      client.notification("initialized");
+
+      const result = await client.request("workspace/symbol", { query: "" });
+      expect((result.result as { name: string }[]).map(({ name }) => name)).toEqual(["정상"]);
+    } finally {
+      await client.close();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("searches symbols across open documents and refreshes results after changes and close", async () => {
     const client = new LspClient();
     try {

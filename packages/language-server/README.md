@@ -24,7 +24,7 @@ The package also exposes the `geulion-language-server` executable when installed
 - Full document synchronization, versioned open/change/close notifications, and compiler diagnostics
 - Keyword, built-in, and in-file function completion
 - Built-in signature help, semantic hover, function definition, and document symbols
-- Workspace symbol search across currently open documents, ordered deterministically by symbol name and location
+- Workspace symbol search across `.geul` files under the negotiated workspace folders (or `rootUri`), with open buffers taking precedence
 - Semantic references and rename edits checked by the GEULION compiler before being returned
 - Cancellation for requests still queued for dispatch, stale document version rejection, and malformed JSON frame recovery
 
@@ -32,6 +32,6 @@ Transport input is bounded to 8 KiB of headers and 16 MiB of body data. Each fra
 
 Language version defaults to `0.1`. Clients can select `0.1`, `0.2`, or `0.3` with `initializationOptions.languageVersion`, then update it with `workspace/didChangeConfiguration` using `settings.geulion.languageVersion`.
 
-Workspace symbol search parses function declarations in documents currently open in the server session, including syntactically valid modules that do not contain the program entry function. It does not index closed files or resolve cross-file references. The server uses the GEULION compiler frontend parser for symbols and compiler analysis for diagnostics and semantic editor features.
+Workspace symbol search parses top-level function declarations in `.geul` files under the workspace roots, including syntactically valid modules that do not contain the program entry function. It reads disk contents for each search, so file additions, edits, and deletions do not remain stale; an open editor buffer overrides disk contents for the same file. The scan skips `.git`, `node_modules`, `dist`, and `coverage` directories and does not follow symlinks. Without a file workspace root, results come only from open documents. Search does not resolve cross-file references. The server uses the GEULION compiler frontend parser for symbols and compiler analysis for diagnostics and semantic editor features.
 
 Requests are handled synchronously against the current document snapshot. Since no analysis work continues asynchronously after a request completes, later edits cannot publish an older result; cancellation applies while a request is queued and has not started.
