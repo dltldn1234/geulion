@@ -5,13 +5,13 @@
 - Current Phase: 8 — VS Code source navigation
 - Current Issue: [#73 — Add compiler-backed references and rename](https://github.com/dltldn1234/geulion/issues/73)
 - Working branch: `73-feat/vscode-references-rename`
-- Current PR: not opened yet.
+- Current PR: [#74 — Add compiler-backed references and rename](https://github.com/dltldn1234/geulion/pull/74).
 - Initial baseline SHA: `afc1b41`
 - Initial main commit count: 58
 - Latest verified main SHA: `99094715bab6327056addeee0cd0f4d482ee7e82` (2026-11-09)
 - Current unique commits reachable from main: 154
 - New commits reachable from main since baseline: 96
-- Issue #73 local unmerged commits: 3 planned atomic commits; none merged yet.
+- Issue #73 local unmerged commits: 4 (implementation, tests, and progress tracking); PR #74 is open.
 - Remaining to minimum 300: 146
 - Remaining to primary 400: 246
 - Remaining to extended 500: 346
@@ -60,7 +60,7 @@
 - Issue #69 / PR #70 completed the local Web Playground and merged with Merge Commit `55662e2eaab49a63a497207eee91b3b915cb5f21`; CI run `42558581415` passed.
 - Issue #71 adds compiler-backed definition and document-symbol providers for declarations and references in the active GEULION buffer. Full workspace tests pass (23 files / 237 tests); TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check` pass.
 - Issue #71 / PR #72 completed compiler-backed definition and document-symbol providers and merged with Merge Commit `99094715bab6327056addeee0cd0f4d482ee7e82`; CI run `42559536742` passed.
-- Issue #73 implements semantic Find All References and Rename in the active document. Focused tests pass (5 tests); workspace tests pass (24 files / 242 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check` pass. Changes are not yet committed or merged.
+- Issue #73 implements semantic Find All References and Rename in the active document. Focused tests pass (5 tests); workspace tests pass (24 files / 242 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check` pass. Implementation and tests are pushed on PR #74; CI run `42563488097` passed. A subsequent progress-only update is awaiting push and CI.
 
 ## Known limitations
 
@@ -70,7 +70,7 @@
 
 ## Next
 
-1. Commit the verified Issue #73 implementation and tests, open its PR, and wait for CI before merging.
+1. Wait for PR #74 CI, address review feedback, and merge with a Merge Commit after all required gates pass.
 2. Continue remaining Phase 8 language-server functionality, then Phase 10 stability and optimization.
 
 ## Commit growth tracking
