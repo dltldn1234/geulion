@@ -1,6 +1,6 @@
-# GEULION Module System Proposal
+# GEULION Module System RFC (Superseded)
 
-**Status: Proposed RFC** — this document proposes a versioned multi-file module model. It does not change the v0.1, v0.2, or v0.3 language contracts and does not claim that modules are implemented.
+**Status: Superseded.** The approved v0.4 rules are normative in [Language Specification v0.4 — Modules](./specification-v0.4-modules.md). This file preserves the design history; it is not an implementation contract.
 
 ## 1. Context and goals
 
@@ -134,7 +134,7 @@ The v0.4 acceptance suite should cover:
 6. Integrate graph-aware Language Server providers and invalidation.
 7. Add executable conformance fixtures and documentation examples before marking v0.4 implemented.
 
-## 11. Decisions to confirm before normative specification
+## 11. Decisions recorded by the RFC
 
 | Question           | Recommendation                                       | Why                                                                                                     |
 | ------------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -145,4 +145,4 @@ The v0.4 acceptance suite should cover:
 | Versioning         | Opt-in v0.4; preserve v0.1–v0.3 unchanged            | Prevents import syntax or entrypoint changes from silently changing existing programs.                  |
 | Browser entrypoint | Preserve current host ABI; no automatic `시작`       | Maintains the v0.3 host execution boundary.                                                             |
 
-These recommendations are not yet normative. Any change to public syntax, CLI invocation, or browser entrypoint behavior requires an explicit decision before the document is promoted to a language specification.
+The user approved these recommendations for normative v0.4 specification. Their finalized rules are defined in [specification-v0.4-modules.md](./specification-v0.4-modules.md).

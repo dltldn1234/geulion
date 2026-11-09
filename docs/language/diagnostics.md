@@ -112,6 +112,20 @@
 | `GE2004` | 공개 선언의 이전 버전 사용 또는 미지원 language-version/target 조합 | resolve |
 | `GE2005` | 브라우저 모듈의 공개 함수 누락                                      | resolve |
 
+## v0.4 모듈 진단 코드
+
+모듈/프로젝트 진단은 [`specification-v0.4-modules.md`](./specification-v0.4-modules.md)에 정의되어 있으며 구현 완료를 뜻하지 않습니다.
+
+| 코드     | 원인                                                       | 단계    |
+| -------- | ---------------------------------------------------------- | ------- |
+| `GE1003` | import 선언 형식 오류 또는 함수 선언 뒤 import             | parse   |
+| `GE2006` | 잘못된/누락된 import 경로, 확장자 또는 대소문자 불일치     | resolve |
+| `GE2007` | 프로젝트 루트 탈출 또는 심볼릭 링크 경유                   | resolve |
+| `GE2008` | 중복 import/별칭 또는 별칭과 로컬/prelude 이름 충돌        | resolve |
+| `GE2009` | 알 수 없는 별칭/공개 함수 또는 비공개 함수 접근            | resolve |
+| `GE2010` | 모듈 위치에 따른 `시작` 규칙 또는 entrypoint 시그니처 위반 | resolve |
+| `GE2011` | v0.1–v0.3에서 import 선언 사용                             | resolve |
+
 ## 진단 순서와 중단
 
 1. UTF-8 해독과 lexing은 복구 가능한 위치에서 다시 시작해 오류를 source 순서대로 수집합니다. 파일당 최대 100개의 lex 진단을 내고 나머지를 억제합니다. lex 오류가 하나라도 있으면 parse/type/code generation을 실행하지 않습니다.
