@@ -16,6 +16,12 @@ export interface RuntimeHost {
   report(diagnostic: Diagnostic): void;
 }
 
+interface AbiType {
+  readonly kind: "primitive" | "collection";
+  readonly name: string;
+  readonly element?: AbiType;
+}
+
 /**
  * This function is emitted into generated programs via its compiled toString().
  * Keep every runtime dependency inside its body; type-only imports are erased.
@@ -296,6 +302,290 @@ export function createRuntime(host: RuntimeHost, path: string) {
     }
   }
 
+  function plainObject(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return false;
+    const actual = Reflect.ownKeys(value);
+    if (!(actual.every((key) => typeof key === "string") && actual.length === keys.length))
+      return false;
+    if (![...actual].sort().every((key, index) => key === [...keys].sort()[index])) return false;
+    return actual.every((key) => {
+      if (typeof key !== "string") return false;
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      return descriptor !== undefined && "value" in descriptor && descriptor.enumerable;
+    });
+  }
+
+  function plainArray(value: unknown, maximumLength = Number.MAX_SAFE_INTEGER): value is unknown[] {
+    if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return false;
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+    if (
+      lengthDescriptor === undefined ||
+      !("value" in lengthDescriptor) ||
+      typeof lengthDescriptor.value !== "number" ||
+      !Number.isSafeInteger(lengthDescriptor.value) ||
+      lengthDescriptor.value < 0 ||
+      lengthDescriptor.value > maximumLength
+    )
+      return false;
+    const keys = Reflect.ownKeys(value);
+    if (keys.some((key) => typeof key !== "string") || keys.length !== lengthDescriptor.value + 1)
+      return false;
+    const keySet = new Set(keys);
+    for (let index = 0; index < lengthDescriptor.value; index += 1) {
+      if (!keySet.has(String(index))) return false;
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (descriptor === undefined || !("value" in descriptor) || !descriptor.enumerable)
+        return false;
+    }
+    return keySet.has("length");
+  }
+
+  function scalarString(value: string): boolean {
+    for (let index = 0; index < value.length; index += 1) {
+      const unit = value.charCodeAt(index);
+      if (unit >= 0xd800 && unit <= 0xdbff) {
+        const next = value.charCodeAt(index + 1);
+        if (!(next >= 0xdc00 && next <= 0xdfff)) return false;
+        index += 1;
+      } else if (unit >= 0xdc00 && unit <= 0xdfff) return false;
+    }
+    return true;
+  }
+
+  function byteLength(value: string): number {
+    return new TextEncoder().encode(value).length;
+  }
+
+  function transportText(value: unknown): string | null {
+    try {
+      const encoded = JSON.stringify(value);
+      if (encoded === undefined || byteLength(encoded) > 1_048_576) return null;
+      return encoded;
+    } catch {
+      return null;
+    }
+  }
+
+  function decodeAbiValue(
+    value: unknown,
+    type: AbiType,
+    depth: number,
+    budget: { nodes: number },
+  ): RuntimeValue | undefined {
+    budget.nodes += 1;
+    if (budget.nodes > 65_536 || depth > 64 || typeof value !== "object" || value === null)
+      return undefined;
+    if (type.kind === "primitive") {
+      switch (type.name) {
+        case "없음":
+          return plainObject(value, ["kind"]) && value.kind === "unit" ? unit : undefined;
+        case "정수": {
+          if (!plainObject(value, ["kind", "decimal"]) || value.kind !== "integer")
+            return undefined;
+          const decimal = value.decimal;
+          if (typeof decimal !== "string" || !/^(?:0|[1-9][0-9]*|-[1-9][0-9]*)$/u.test(decimal))
+            return undefined;
+          try {
+            const integer = BigInt(decimal);
+            return integer >= minimumInteger && integer <= maximumInteger ? integer : undefined;
+          } catch {
+            return undefined;
+          }
+        }
+        case "실수": {
+          if (!plainObject(value, ["kind", "value"]) || value.kind !== "real") return undefined;
+          const text = value.value;
+          if (typeof text !== "string") return undefined;
+          if (text === "NaN") return Number.NaN;
+          if (text === "Infinity") return Number.POSITIVE_INFINITY;
+          if (text === "-Infinity") return Number.NEGATIVE_INFINITY;
+          if (text === "-0") return -0;
+          const number = Number(text);
+          return Number.isFinite(number) && number.toString() === text ? number : undefined;
+        }
+        case "문자열": {
+          if (!plainObject(value, ["kind", "value"]) || value.kind !== "string") return undefined;
+          const text = value.value;
+          return typeof text === "string" && scalarString(text) && byteLength(text) <= 262_144
+            ? text
+            : undefined;
+        }
+        case "불리언":
+          return plainObject(value, ["kind", "value"]) &&
+            value.kind === "boolean" &&
+            typeof value.value === "boolean"
+            ? value.value
+            : undefined;
+      }
+    }
+    const element = type.element;
+    if (!element) return undefined;
+    if (type.name === "선택") {
+      if (plainObject(value, ["kind"]) && value.kind === "none") return none;
+      if (!plainObject(value, ["kind", "value"]) || value.kind !== "some") return undefined;
+      const inner = decodeAbiValue(value.value, element, depth + 1, budget);
+      return inner === undefined ? undefined : some(inner);
+    }
+    if (type.name === "목록") {
+      if (
+        !plainObject(value, ["kind", "values"]) ||
+        value.kind !== "list" ||
+        !plainArray(value.values, 16_384)
+      )
+        return undefined;
+      const values: RuntimeValue[] = [];
+      for (const item of value.values) {
+        const decoded = decodeAbiValue(item, element, depth + 1, budget);
+        if (decoded === undefined) return undefined;
+        values.push(decoded);
+      }
+      return list(values);
+    }
+    if (type.name === "사전") {
+      if (
+        !plainObject(value, ["kind", "entries"]) ||
+        value.kind !== "dictionary" ||
+        !plainArray(value.entries, 16_384)
+      )
+        return undefined;
+      const keys = new Set<string>();
+      const entries: [string, RuntimeValue][] = [];
+      for (const pair of value.entries) {
+        if (!plainArray(pair, 2) || pair.length !== 2) return undefined;
+        const key = pair[0];
+        if (
+          typeof key !== "string" ||
+          !scalarString(key) ||
+          byteLength(key) > 262_144 ||
+          keys.has(key)
+        )
+          return undefined;
+        const decoded = decodeAbiValue(pair[1], element, depth + 1, budget);
+        if (decoded === undefined) return undefined;
+        keys.add(key);
+        entries.push([key, decoded]);
+      }
+      return dictionary(entries);
+    }
+    return undefined;
+  }
+
+  function encodeAbiValue(
+    value: RuntimeValue,
+    type: AbiType,
+    depth: number,
+    budget: { nodes: number },
+  ): unknown {
+    budget.nodes += 1;
+    if (budget.nodes > 65_536 || depth > 64) throw new Error("ABI value limit exceeded");
+    if (type.kind === "primitive") {
+      switch (type.name) {
+        case "없음":
+          if (typeof value === "object" && value.kind === "unit") return { kind: "unit" };
+          break;
+        case "정수":
+          if (typeof value === "bigint" && value >= minimumInteger && value <= maximumInteger)
+            return { kind: "integer", decimal: value.toString() };
+          break;
+        case "실수":
+          if (typeof value === "number") {
+            const text = Object.is(value, -0) ? "-0" : value.toString();
+            return { kind: "real", value: text };
+          }
+          break;
+        case "문자열":
+          if (typeof value === "string" && scalarString(value) && byteLength(value) <= 262_144)
+            return { kind: "string", value };
+          break;
+        case "불리언":
+          if (typeof value === "boolean") return { kind: "boolean", value };
+          break;
+      }
+      throw new Error("Runtime value does not match ABI signature");
+    }
+    const element = type.element;
+    if (!element || typeof value !== "object")
+      throw new Error("Runtime value does not match ABI signature");
+    if (type.name === "선택") {
+      if (value.kind === "none") return { kind: "none" };
+      if (value.kind === "some")
+        return { kind: "some", value: encodeAbiValue(value.value, element, depth + 1, budget) };
+    }
+    if (type.name === "목록" && value.kind === "list") {
+      if (value.values.length > 16_384) throw new Error("ABI collection limit exceeded");
+      return {
+        kind: "list",
+        values: value.values.map((item) => encodeAbiValue(item, element, depth + 1, budget)),
+      };
+    }
+    if (type.name === "사전" && value.kind === "dictionary") {
+      if (value.entries.length > 16_384) throw new Error("ABI collection limit exceeded");
+      const keys = new Set<string>();
+      return {
+        kind: "dictionary",
+        entries: value.entries.map(([key, item]) => {
+          if (!scalarString(key) || byteLength(key) > 262_144 || keys.has(key))
+            throw new Error("Invalid ABI key");
+          keys.add(key);
+          return [key, encodeAbiValue(item, element, depth + 1, budget)];
+        }),
+      };
+    }
+    throw new Error("Runtime value does not match ABI signature");
+  }
+
+  function invokeAbi(
+    entry: (...values: RuntimeValue[]) => RuntimeValue,
+    name: string,
+    arguments_: unknown,
+    signature: { readonly parameters: readonly AbiType[]; readonly returns: AbiType },
+  ):
+    | { readonly kind: "value"; readonly value: unknown }
+    | { readonly kind: "diagnostic"; readonly diagnostic: Diagnostic }
+    | {
+        readonly kind: "host-error";
+        readonly error:
+          | { readonly code: "argument-mismatch"; readonly name: string }
+          | { readonly code: "internal-error" };
+      } {
+    let values: RuntimeValue[];
+    try {
+      if (!plainArray(arguments_, signature.parameters.length))
+        return { kind: "host-error", error: { code: "argument-mismatch", name } };
+      if (arguments_.length !== signature.parameters.length)
+        return { kind: "host-error", error: { code: "argument-mismatch", name } };
+      const budget = { nodes: 0 };
+      values = [];
+      const normalizedArguments: unknown[] = [];
+      for (let index = 0; index < signature.parameters.length; index += 1) {
+        const type = signature.parameters[index];
+        if (!type) return { kind: "host-error", error: { code: "internal-error" } };
+        const decoded = decodeAbiValue(arguments_[index], type, 0, budget);
+        if (decoded === undefined)
+          return { kind: "host-error", error: { code: "argument-mismatch", name } };
+        values.push(decoded);
+        normalizedArguments.push(encodeAbiValue(decoded, type, 0, { nodes: 0 }));
+      }
+      if (transportText(normalizedArguments) === null)
+        return { kind: "host-error", error: { code: "argument-mismatch", name } };
+    } catch {
+      return { kind: "host-error", error: { code: "argument-mismatch", name } };
+    }
+    try {
+      const result = entry(...values);
+      const encoded = encodeAbiValue(result, signature.returns, 0, { nodes: 0 });
+      if (transportText(encoded) === null)
+        return { kind: "host-error", error: { code: "internal-error" } };
+      return { kind: "value", value: encoded };
+    } catch (error) {
+      if (error instanceof RuntimeFailure)
+        return { kind: "diagnostic", diagnostic: error.diagnostic };
+      return { kind: "host-error", error: { code: "internal-error" } };
+    }
+  }
+
   return {
     unit,
     none,
@@ -315,6 +605,7 @@ export function createRuntime(host: RuntimeHost, path: string) {
     stringStarts,
     stringEnds,
     run,
+    invokeAbi,
   };
 }
 

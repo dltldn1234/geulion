@@ -17,6 +17,24 @@ function compile(source: string) {
   return generateJavaScript(analyzed.program, { sourceText: source });
 }
 
+function compileBrowser(source: string) {
+  const parsed = parseSource({ path: fixturePath, source: new TextEncoder().encode(source) });
+  if (!parsed.success)
+    throw new Error(`Invalid browser syntax fixture: ${parsed.diagnostics[0]?.message}`);
+  const analyzed = analyzeProgram(parsed.ast, fixturePath, "0.3");
+  if (!analyzed.success)
+    throw new Error(`Invalid browser semantic fixture: ${analyzed.diagnostics[0]?.message}`);
+  return generateJavaScript(analyzed.program, { sourceText: source, target: "browser" });
+}
+
+function executeBrowser(source: string, script: string) {
+  return spawnSync(process.execPath, ["--input-type=module", "-"], {
+    input: `${compileBrowser(source).code}\n${script}`,
+    encoding: "utf8",
+    timeout: 5_000,
+  });
+}
+
 function main(body: string): string {
   return `함수 시작() -> 없음 {\n    ${body.split("\n").join("\n    ")}\n}`;
 }
@@ -298,5 +316,195 @@ describe("JavaScript code generation and runtime", () => {
         },
       );
     }
+  });
+});
+
+describe("v0.3 browser modules and invocation ABI", () => {
+  it("publishes only public signatures and never runs 시작 during module creation", () => {
+    const result = executeBrowser(
+      `공개 함수 더하기(가: 정수, 나: 정수) -> 정수 { 반환 가 + 나 }
+함수 비공개() -> 없음 { 출력("내부") }
+함수 시작() -> 없음 { 출력("자동 실행 금지") }`,
+      `const writes = [];
+const created = createModule({ write(text) { writes.push(text); } });
+const module_ = created.module;
+const result = module_.invoke("더하기", [
+  { kind: "integer", decimal: "20" }, { kind: "integer", decimal: "22" }
+]);
+console.log(JSON.stringify({
+  created: created.kind,
+  apiVersion: module_.apiVersion,
+  exports: module_.exports,
+  result,
+  privateCall: module_.invoke("비공개", []),
+  startCall: module_.invoke("시작", []),
+  writes
+}));`,
+    );
+    expect(result.error).toBeUndefined();
+    expect(result.status, result.stderr).toBe(0);
+    const parsed = JSON.parse(result.stdout) as {
+      created: string;
+      apiVersion: number;
+      exports: readonly { name: string; parameters: readonly unknown[]; returns: unknown }[];
+      result: unknown;
+      privateCall: unknown;
+      startCall: unknown;
+      writes: readonly string[];
+    };
+    expect(parsed).toMatchObject({
+      created: "module",
+      apiVersion: 1,
+      exports: [
+        {
+          name: "더하기",
+          parameters: [
+            { kind: "primitive", name: "정수" },
+            { kind: "primitive", name: "정수" },
+          ],
+          returns: { kind: "primitive", name: "정수" },
+        },
+      ],
+      result: { kind: "value", value: { kind: "integer", decimal: "42" } },
+      privateCall: { kind: "host-error", error: { code: "unknown-export", name: "비공개" } },
+      startCall: { kind: "host-error", error: { code: "unknown-export", name: "시작" } },
+      writes: [],
+    });
+    expect(result.stderr).toBe("");
+  });
+
+  it("rejects invalid tagged values and reports source runtime diagnostics", () => {
+    const result = executeBrowser(
+      `공개 함수 나누기(가: 정수, 나: 정수) -> 정수 { 반환 가 / 나 }
+함수 시작() -> 없음 {}`,
+      `const module_ = createModule({ write() {} }).module;
+let sideEffects = 0;
+const accessor = { kind: "integer" };
+Object.defineProperty(accessor, "decimal", { enumerable: true, get() { sideEffects += 1; return "1"; } });
+const custom = { kind: "integer", decimal: "1", toJSON() { sideEffects += 1; return this; } };
+const output = [
+  module_.invoke("나누기", [{kind:"integer",decimal:"01"},{kind:"integer",decimal:"1"}]),
+  module_.invoke("나누기", [{kind:"integer",decimal:"1",extra:true},{kind:"integer",decimal:"1"}]),
+  module_.invoke("나누기", [accessor,{kind:"integer",decimal:"1"}]),
+  module_.invoke("나누기", [custom,{kind:"integer",decimal:"1"}]),
+  module_.invoke("나누기", [{kind:"integer",decimal:"1"},{kind:"integer",decimal:"0"}]),
+  module_.invoke("없는 함수", []),
+  module_.invoke("나누기", [{kind:"integer",decimal:"1"}])
+];
+console.log(JSON.stringify({ output, sideEffects }));`,
+    );
+    expect(result.error).toBeUndefined();
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      output: [
+        { kind: "host-error", error: { code: "argument-mismatch", name: "나누기" } },
+        { kind: "host-error", error: { code: "argument-mismatch", name: "나누기" } },
+        { kind: "host-error", error: { code: "argument-mismatch", name: "나누기" } },
+        { kind: "host-error", error: { code: "argument-mismatch", name: "나누기" } },
+        { kind: "diagnostic", diagnostic: { code: "GE4002", phase: "runtime", path: fixturePath } },
+        { kind: "host-error", error: { code: "unknown-export", name: "없는 함수" } },
+        { kind: "host-error", error: { code: "argument-mismatch", name: "나누기" } },
+      ],
+      sideEffects: 0,
+    });
+  });
+
+  it("validates the host and turns host.write failures into GE4004", () => {
+    const result = executeBrowser(
+      `공개 함수 알림() -> 없음 { 출력("호스트") }
+함수 시작() -> 없음 {}`,
+      `const invalid = createModule(null);
+const module_ = createModule({ write() { throw new Error("broken host"); } }).module;
+console.log(JSON.stringify({ invalid, output: module_.invoke("알림", []) }));`,
+    );
+    expect(result.error).toBeUndefined();
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      invalid: { kind: "host-error", error: { code: "invalid-host" } },
+      output: { kind: "diagnostic", diagnostic: { code: "GE4004", phase: "runtime" } },
+    });
+  });
+
+  it("round-trips recursively tagged collection and optional values", () => {
+    const result = executeBrowser(
+      `공개 함수 그대로(값: 목록[선택[정수]]) -> 목록[선택[정수]] { 반환 값 }
+함수 시작() -> 없음 {}`,
+      `const module_ = createModule({ write() {} }).module;
+const value = {kind:"list",values:[{kind:"some",value:{kind:"integer",decimal:"-2"}},{kind:"none"}]};
+console.log(JSON.stringify(module_.invoke("그대로", [value])));`,
+    );
+    expect(result.error).toBeUndefined();
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({
+      kind: "value",
+      value: {
+        kind: "list",
+        values: [{ kind: "some", value: { kind: "integer", decimal: "-2" } }, { kind: "none" }],
+      },
+    });
+  });
+
+  it("enforces canonical real, scalar string, collection, and recursive-depth limits", () => {
+    const realAndText = executeBrowser(
+      `공개 함수 실수값(값: 실수) -> 실수 { 반환 값 }
+공개 함수 문자열값(값: 문자열) -> 문자열 { 반환 값 }
+공개 함수 목록값(값: 목록[없음]) -> 목록[없음] { 반환 값 }
+함수 시작() -> 없음 {}`,
+      `const module_ = createModule({ write() {} }).module;
+const results = [
+  module_.invoke("실수값", [{kind:"real",value:"1.0"}]),
+  module_.invoke("실수값", [{kind:"real",value:"-0"}]),
+  module_.invoke("문자열값", [{kind:"string",value:"\\ud800"}]),
+  module_.invoke("문자열값", [{kind:"string",value:"x".repeat(262145)}]),
+  module_.invoke("목록값", [{kind:"list",values:Array(16385).fill({kind:"unit"})}])
+];
+console.log(JSON.stringify(results));`,
+    );
+    expect(realAndText.error).toBeUndefined();
+    expect(realAndText.status, realAndText.stderr).toBe(0);
+    expect(JSON.parse(realAndText.stdout)).toMatchObject([
+      { kind: "host-error", error: { code: "argument-mismatch", name: "실수값" } },
+      { kind: "value", value: { kind: "real", value: "-0" } },
+      { kind: "host-error", error: { code: "argument-mismatch", name: "문자열값" } },
+      { kind: "host-error", error: { code: "argument-mismatch", name: "문자열값" } },
+      { kind: "host-error", error: { code: "argument-mismatch", name: "목록값" } },
+    ]);
+
+    let nestedType = "정수";
+    let nestedValue: unknown = { kind: "integer", decimal: "1" };
+    for (let depth = 0; depth < 65; depth += 1) {
+      nestedType = `선택[${nestedType}]`;
+      nestedValue = { kind: "some", value: nestedValue };
+    }
+    const deep = executeBrowser(
+      `공개 함수 깊이(값: ${nestedType}) -> ${nestedType} { 반환 값 }
+함수 시작() -> 없음 {}`,
+      `const module_ = createModule({ write() {} }).module;
+console.log(JSON.stringify(module_.invoke("깊이", [${JSON.stringify(nestedValue)}])));`,
+    );
+    expect(deep.error).toBeUndefined();
+    expect(deep.status, deep.stderr).toBe(0);
+    expect(JSON.parse(deep.stdout)).toEqual({
+      kind: "host-error",
+      error: { code: "argument-mismatch", name: "깊이" },
+    });
+  });
+
+  it("accepts collection limits at the boundary and rejects oversized encoded arguments", () => {
+    const result = executeBrowser(
+      `공개 함수 목록값(값: 목록[없음]) -> 목록[없음] { 반환 값 }
+공개 함수 문자열목록(값: 목록[문자열]) -> 목록[문자열] { 반환 값 }
+함수 시작() -> 없음 {}`,
+      `const module_ = createModule({ write() {} }).module;
+const atLimit = module_.invoke("목록값", [{kind:"list",values:Array(16384).fill({kind:"unit"})}]);
+const tooLarge = module_.invoke("문자열목록", [{kind:"list",values:Array(4000).fill({kind:"string",value:"x".repeat(250)})}]);
+console.log(JSON.stringify({ atLimit: [atLimit.kind, atLimit.value?.values.length], tooLarge }));`,
+    );
+    expect(result.error).toBeUndefined();
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({
+      atLimit: ["value", 16384],
+      tooLarge: { kind: "host-error", error: { code: "argument-mismatch", name: "문자열목록" } },
+    });
   });
 });
