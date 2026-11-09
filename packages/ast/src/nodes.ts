@@ -14,6 +14,7 @@ export interface ProgramNode {
 
 export interface FunctionDeclarationNode {
   readonly kind: "FunctionDeclaration";
+  readonly visibility: "private" | "public";
   readonly name: IdentifierName;
   readonly parameters: readonly ParameterNode[];
   readonly returnType: TypeNode;

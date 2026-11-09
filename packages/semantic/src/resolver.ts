@@ -14,7 +14,7 @@ import { limitDiagnostics } from "./diagnostics.js";
 
 export type SymbolId = number;
 export type ScopeId = number;
-export type LanguageVersion = "0.1" | "0.2";
+export type LanguageVersion = "0.1" | "0.2" | "0.3";
 
 export interface FunctionSignature {
   /** A null parameter is the single built-in polymorphic 출력 argument. */
@@ -56,6 +56,8 @@ export interface ResolvedProgram {
   readonly scopes: ReadonlyMap<ScopeId, LexicalScope>;
   readonly references: ReadonlyMap<IdentifierName, SymbolId>;
   readonly functions: ReadonlyMap<string, FunctionSymbol>;
+  /** Explicit public functions in source declaration order. */
+  readonly exports: readonly FunctionSymbol[];
   readonly entrypoint: FunctionSymbol | null;
 }
 
@@ -75,12 +77,13 @@ export function resolveProgram(
   const scopes = new Map<ScopeId, LexicalScope>();
   const references = new Map<IdentifierName, SymbolId>();
   const functions = new Map<string, FunctionSymbol>();
+  const exports: FunctionSymbol[] = [];
   const diagnostics: Diagnostic[] = [];
   let symbolId = 0;
   let scopeId = 0;
 
   function report(
-    code: "GE2001" | "GE2002" | "GE2003",
+    code: "GE2001" | "GE2002" | "GE2003" | "GE2004",
     message: string,
     span: SourceSpan,
     prior?: SemanticSymbol,
@@ -94,8 +97,10 @@ export function resolveProgram(
         range: span,
         help:
           code === "GE2003"
-            ? "정확히 하나의 `함수 시작() -> 없음`을 선언하세요."
-            : "현재 범위의 선언과 이름을 확인하세요.",
+            ? "정확히 하나의 비공개 `함수 시작() -> 없음`을 선언하세요."
+            : code === "GE2004"
+              ? "`--language-version 0.3`을 선택하세요."
+              : "현재 범위의 선언과 이름을 확인하세요.",
         related: prior?.span
           ? [{ message: "이전에 선언한 위치입니다.", path, range: prior.span }]
           : [],
@@ -108,7 +113,7 @@ export function resolveProgram(
     ["정수로", [REAL], INTEGER],
     ["실수로", [INTEGER], REAL],
   ];
-  if (languageVersion === "0.2") {
+  if (languageVersion === "0.2" || languageVersion === "0.3") {
     prelude.push(
       ["문자열길이", [STRING], INTEGER],
       ["문자열포함", [STRING, STRING], BOOLEAN],
@@ -154,7 +159,19 @@ export function resolveProgram(
         declaration.name.span,
         previous,
       );
-    else functions.set(name, symbol);
+    else {
+      functions.set(name, symbol);
+      if (declaration.visibility === "public") {
+        if (languageVersion === "0.3") exports.push(symbol);
+        else {
+          report(
+            "GE2004",
+            "`공개 함수` 선언은 언어 버전 0.3에서만 사용할 수 있습니다.",
+            declaration.name.span,
+          );
+        }
+      }
+    }
   }
 
   const entries = ast.functions.filter((f) => f.name.normalized === "시작");
@@ -163,6 +180,7 @@ export function resolveProgram(
     const type = typeFromNode(entry.returnType);
     if (
       index > 0 ||
+      entry.visibility === "public" ||
       entry.parameters.length !== 0 ||
       type.kind !== "primitive" ||
       type.name !== "없음"
@@ -323,7 +341,11 @@ export function resolveProgram(
       scopes,
       references,
       functions,
-      entrypoint: entries.length === 1 ? (functions.get("시작") ?? null) : null,
+      exports,
+      entrypoint:
+        entries.length === 1 && entries[0]?.visibility === "private"
+          ? (functions.get("시작") ?? null)
+          : null,
     },
     ...limited,
   };

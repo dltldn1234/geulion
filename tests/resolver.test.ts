@@ -7,13 +7,56 @@ import {
 import { parseSource } from "@geulion/compiler";
 import { resolveProgram } from "@geulion/semantic";
 
-function resolveText(source: string) {
+function resolveText(source: string, languageVersion: "0.1" | "0.2" | "0.3" = "0.1") {
   const parsed = parseSource({ path: "resolver.geul", source: new TextEncoder().encode(source) });
   if (!parsed.success) throw new Error(`Invalid resolver fixture: ${parsed.diagnostics[0]?.code}`);
-  return resolveProgram(parsed.ast, "resolver.geul");
+  return resolveProgram(parsed.ast, "resolver.geul", languageVersion);
 }
 
 describe("semantic name resolution", () => {
+  it("publishes normalized public signatures in declaration order for v0.3", () => {
+    const result = resolveText(
+      `공개 함수 계산(값: 목록[선택[정수]]) -> 사전[문자열] { 반환 {} }
+함수 비공개() -> 없음 {}
+공개 함수 이름(값: 문자열) -> 문자열 { 반환 값 }
+함수 시작() -> 없음 { 비공개(); 출력(문자열길이("글")) }`,
+      "0.3",
+    );
+    expect(result.success).toBe(true);
+    expect(result.program.exports.map(({ name }) => name)).toEqual(["계산", "이름"]);
+    expect(result.program.exports[0]?.signature).toMatchObject({
+      parameters: [
+        { kind: "collection", name: "목록", element: { kind: "collection", name: "선택" } },
+      ],
+      returnType: {
+        kind: "collection",
+        name: "사전",
+        element: { kind: "primitive", name: "문자열" },
+      },
+    });
+    expect(result.program.functions.has("비공개")).toBe(true);
+    expect(result.program.exports.some(({ name }) => name === "비공개")).toBe(false);
+  });
+
+  it("requires v0.3 for public declarations and keeps duplicate normalized exports invalid", () => {
+    const olderVersion = resolveText("공개 함수 계산() -> 없음 {}\n함수 시작() -> 없음 {}", "0.2");
+    expect(olderVersion.diagnostics.map(({ code }) => code)).toEqual(["GE2004"]);
+
+    const duplicates = resolveText(
+      "공개 함수 가() -> 없음 {}\n공개 함수 가() -> 없음 {}\n함수 시작() -> 없음 {}",
+      "0.3",
+    );
+    expect(duplicates.success).toBe(false);
+    expect(duplicates.diagnostics.map(({ code }) => code)).toContain("GE2002");
+  });
+
+  it("rejects public start as the required entrypoint", () => {
+    const result = resolveText("공개 함수 시작() -> 없음 {}", "0.3");
+    expect(result.success).toBe(false);
+    expect(result.diagnostics.map(({ code }) => code)).toEqual(["GE2003"]);
+    expect(result.program.entrypoint).toBeNull();
+  });
+
   it("collects function signatures before resolving recursive and mutually recursive calls", () => {
     const result = resolveText(`함수 시작() -> 없음 { 출력(짝수(4)); 출력(합계(3)) }
 함수 짝수(수: 정수) -> 불리언 {

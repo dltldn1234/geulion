@@ -4,7 +4,7 @@
 
 ## 1. Version and target selection
 
-- v0.1 remains the default language version; v0.2 behavior remains as specified in `specification-v0.2.md`.
+- v0.1 remains the default language version. v0.3 includes the v0.2 language behavior and string prelude specified in `specification-v0.2.md`; selecting v0.2 and v0.1 continues to preserve their existing behavior.
 - v0.3 is opt-in with `--language-version 0.3`. It is required for `공개 함수` declarations and the browser module target.
 - The compiler API accepts `languageVersion: "0.3"` with `target: "browser"` for generated browser modules. The Node target accepts only v0.1 and v0.2.
 - The CLI accepts `--target browser` on `emit-js` and `build`; both require `--language-version 0.3`. Conversely, v0.3 `emit-js` and `build` require the explicit browser target. `run` accepts only v0.1/v0.2 and remains Node-only. Omitting `--target` for v0.1/v0.2 preserves current Node output and behavior.
@@ -122,6 +122,7 @@ interface Diagnostic {
     | "GE2001"
     | "GE2002"
     | "GE2003"
+    | "GE2004"
     | "GE3001"
     | "GE3002"
     | "GE3003"

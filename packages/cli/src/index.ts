@@ -14,7 +14,8 @@ interface PackageMetadata {
   readonly version: string;
 }
 
-type LanguageVersion = "0.1" | "0.2";
+type LanguageVersion = "0.1" | "0.2" | "0.3";
+type NodeLanguageVersion = Exclude<LanguageVersion, "0.3">;
 
 function getVersion(): string {
   const packageJson = new URL("../package.json", import.meta.url);
@@ -34,7 +35,7 @@ function printHelp(): void {
       "  geulion --version",
       "  geulion tokens <file.geul>",
       "  geulion parse <file.geul>",
-      "  geulion check <file.geul> [--language-version 0.2]",
+      "  geulion check <file.geul> [--language-version 0.2|0.3]",
       "  geulion emit-js <file.geul> [--language-version 0.2]",
       "  geulion run <file.geul> [--language-version 0.2]",
       "  geulion build <file.geul> [--out-dir <directory>] [--language-version 0.2]",
@@ -57,7 +58,7 @@ type CompiledFile =
   | { readonly success: true; readonly code: string }
   | { readonly success: false; readonly status: number };
 
-function compileFile(path: string, languageVersion: LanguageVersion): CompiledFile {
+function compileFile(path: string, languageVersion: NodeLanguageVersion): CompiledFile {
   const source = readSource(path);
   if (source === undefined) return { success: false, status: 2 };
 
@@ -71,7 +72,7 @@ function compileFile(path: string, languageVersion: LanguageVersion): CompiledFi
   return { success: true, code: result.code };
 }
 
-function runFile(path: string, languageVersion: LanguageVersion): number {
+function runFile(path: string, languageVersion: NodeLanguageVersion): number {
   const result = compileFile(path, languageVersion);
   if (!result.success) return result.status;
 
@@ -104,7 +105,7 @@ function runFile(path: string, languageVersion: LanguageVersion): number {
 function buildFile(
   path: string,
   outputDirectory: string,
-  languageVersion: LanguageVersion,
+  languageVersion: NodeLanguageVersion,
 ): number {
   const result = compileFile(path, languageVersion);
   if (!result.success) return result.status;
@@ -170,6 +171,10 @@ function inspectFile(
       : printDiagnostics(result.diagnostics, source, result.suppressedCount);
   }
   if (command === "emit-js") {
+    if (languageVersion === "0.3") {
+      process.stderr.write("오류: 언어 버전 0.3은 현재 Node 대상 컴파일을 지원하지 않습니다.\n");
+      return 2;
+    }
     const result = compileSource({ path, source, target: "node", languageVersion });
     if (!result.success)
       return printDiagnostics(result.diagnostics, source, result.suppressedCount);
@@ -215,8 +220,8 @@ export function runCli(args: readonly string[]): number {
       const option = args[index];
       if (option === "--language-version" && !hasLanguageVersion) {
         const value = args[index + 1];
-        if (value !== "0.1" && value !== "0.2") {
-          process.stderr.write("오류: --language-version은 0.1 또는 0.2여야 합니다.\n");
+        if (value !== "0.1" && value !== "0.2" && value !== "0.3") {
+          process.stderr.write("오류: --language-version은 0.1, 0.2 또는 0.3이어야 합니다.\n");
           return 2;
         }
         languageVersion = value;
@@ -248,8 +253,20 @@ export function runCli(args: readonly string[]): number {
       process.stderr.write(`오류: ${command} 명령은 언어 버전 선택을 사용하지 않습니다.\n`);
       return 2;
     }
-    if (command === "run") return runFile(path, languageVersion);
-    if (command === "build") return buildFile(path, outputDirectory, languageVersion);
+    if (command === "run") {
+      if (languageVersion === "0.3") {
+        process.stderr.write("오류: 언어 버전 0.3은 현재 check 명령만 지원합니다.\n");
+        return 2;
+      }
+      return runFile(path, languageVersion);
+    }
+    if (command === "build") {
+      if (languageVersion === "0.3") {
+        process.stderr.write("오류: 언어 버전 0.3은 현재 check 명령만 지원합니다.\n");
+        return 2;
+      }
+      return buildFile(path, outputDirectory, languageVersion);
+    }
     return inspectFile(command, path, languageVersion);
   }
 
