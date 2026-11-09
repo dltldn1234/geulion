@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { readdirSync, readFileSync } from "node:fs";
+import { isAbsolute, join, relative, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { checkSource, parseSource, type LanguageVersion } from "@geulion/compiler";
 import type { Diagnostic, SourceSpan, TypeNode } from "@geulion/ast";
@@ -115,9 +117,11 @@ type GeulTypeShape =
   | { kind: "primitive"; name: string }
   | { kind: "collection"; name: string; element: GeulTypeShape };
 const documents = new Map<string, Document>();
+const IGNORED_WORKSPACE_DIRECTORIES = new Set([".git", "node_modules", "dist", "coverage"]);
 let languageVersion: LanguageVersion = "0.1";
 let positionEncoding: PositionEncoding = "utf-16";
 let clientSupportsSnippets = false;
+let workspaceRoots: string[] = [];
 let initialized = false;
 let initializationComplete = false;
 let shutdownRequested = false;
@@ -334,6 +338,100 @@ function pathToUri(path: string): string {
   return path.startsWith("file:") ? path : pathToFileURL(path).toString();
 }
 
+function fileUri(uri: string): string | undefined {
+  try {
+    const parsed = new URL(uri);
+    return parsed.protocol === "file:"
+      ? pathToFileURL(fileURLToPath(parsed)).toString()
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function workspaceRootPaths(params: JsonObject): string[] {
+  const folders = params.workspaceFolders;
+  const folderUris = Array.isArray(folders)
+    ? folders.flatMap((folder) => {
+        const uri = getString(isObject(folder) ? folder : undefined, "uri");
+        return uri ? [uri] : [];
+      })
+    : [];
+  const rootUri = getString(params, "rootUri");
+  const folderRoots = folderUris.flatMap((uri) => {
+    const normalized = fileUri(uri);
+    return normalized ? [fileURLToPath(normalized)] : [];
+  });
+  const root = rootUri ? fileUri(rootUri) : undefined;
+  return [...new Set(folderRoots.length > 0 ? folderRoots : root ? [fileURLToPath(root)] : [])];
+}
+
+function workspaceFiles(root: string): string[] {
+  const files: string[] = [];
+  const visit = (directory: string): void => {
+    let entries;
+    try {
+      entries = readdirSync(directory, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (!IGNORED_WORKSPACE_DIRECTORIES.has(entry.name)) visit(path);
+      } else if (entry.isFile() && entry.name.endsWith(".geul")) files.push(path);
+    }
+  };
+  visit(root);
+  return files;
+}
+
+function workspaceSymbolDocuments(): Map<string, Document> {
+  const result = new Map<string, Document>();
+  const overlays = new Map<string, Document>();
+  for (const document of documents.values()) {
+    const normalized = fileUri(document.uri);
+    if (!normalized) {
+      if (workspaceRoots.length === 0) result.set(document.uri, document);
+      continue;
+    }
+    const path = fileURLToPath(normalized);
+    const inWorkspace = workspaceRoots.some((root) => {
+      const fromRoot = relative(root, path);
+      return (
+        fromRoot === "" ||
+        (fromRoot !== ".." && !fromRoot.startsWith(`..${sep}`) && !isAbsolute(fromRoot))
+      );
+    });
+    if (workspaceRoots.length === 0 || (inWorkspace && path.endsWith(".geul")))
+      overlays.set(normalized, document);
+  }
+  const visited = new Set<string>();
+  for (const root of workspaceRoots) {
+    for (const path of workspaceFiles(root)) {
+      const uri = pathToFileURL(path).toString();
+      if (visited.has(uri)) continue;
+      visited.add(uri);
+      const overlay = overlays.get(uri);
+      if (overlay) {
+        result.set(overlay.uri, overlay);
+        continue;
+      }
+      try {
+        const bytes = readFileSync(path);
+        const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+        result.set(uri, { uri, text, version: 0 });
+      } catch {
+        // A single unreadable or malformed file must not hide other workspace symbols.
+      }
+    }
+  }
+  for (const [uri, document] of overlays) {
+    if (!visited.has(uri)) result.set(document.uri, document);
+  }
+  return result;
+}
+
 function currentAnalysis(document: Document) {
   const result = analyze(document);
   return result.success ? result : undefined;
@@ -454,6 +552,7 @@ function handleRequest(method: string, params: JsonObject): unknown {
     const requestedVersion = getString(options ?? {}, "languageVersion");
     if (requestedVersion && LANGUAGE_VERSIONS.has(requestedVersion as LanguageVersion))
       languageVersion = requestedVersion as LanguageVersion;
+    workspaceRoots = workspaceRootPaths(params);
     initialized = true;
     return {
       capabilities: {
@@ -600,7 +699,7 @@ function handleRequest(method: string, params: JsonObject): unknown {
       location: { uri: string; range: Range };
       kind: number;
     }[] = [];
-    for (const document of documents.values()) {
+    for (const document of workspaceSymbolDocuments().values()) {
       const parsed = parseSource({
         path: documentPath(document.uri),
         source: new TextEncoder().encode(document.text),
