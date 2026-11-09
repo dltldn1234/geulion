@@ -1,6 +1,6 @@
 # GEULION v0.3 Browser Module and Host API Specification
 
-**Status: Normative contract.** This document specifies the source export marker, browser compilation target, invocation ABI, value transport, and save-envelope validation. Issues #45 and #47 implement public declarations, browser module generation, invocation validation, and browser CLI targets; the save-envelope remains a host-owned contract without a GEULION persistence implementation. The existing v0.1 and v0.2 contracts remain unchanged.
+**Status: Normative contract.** This document specifies the source export marker, browser compilation target, invocation ABI, value transport, and save-envelope validation. Issues #45 and #47 implement public declarations, browser module generation, invocation validation, and browser CLI targets. Issue #49 adds a platform-neutral package that encodes and decodes the save envelope; storage access and atomic persistence remain host-owned. The existing v0.1 and v0.2 contracts remain unchanged.
 
 ## 1. Version and target selection
 
@@ -258,4 +258,4 @@ Before an implementation is declared conforming, executable cases must cover:
 - valid, absent, malformed, oversized, unsupported-version, incompatible-application-version, and explicitly migrated save envelopes;
 - browser and programmatic Node v0.3 host adapters produce identical values and GEULION diagnostics for the same public invocation sequence.
 
-Until these cases and the implementation land, this document is the normative design target, not evidence that browser compilation, the ABI, or persistence exists in the repository.
+The browser module, invocation ABI, and save-envelope codec are implemented and covered by repository tests. This codec validates and serializes bytes only: it does not access storage, perform atomic writes, migrate versions, or provide a programmatic Node/browser storage adapter. The full conformance list above still includes adapter parity and runtime checks outside this package.

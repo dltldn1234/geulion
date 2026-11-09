@@ -181,6 +181,9 @@ importers:
       '@geulion/compiler':
         specifier: workspace:*
         version: link:packages/compiler
+      '@geulion/host-api':
+        specifier: workspace:*
+        version: link:packages/host-api
       '@geulion/lexer':
         specifier: workspace:*
         version: link:packages/lexer
@@ -243,6 +246,8 @@ importers:
       '@geulion/semantic':
         specifier: workspace:*
         version: link:../semantic
+
+  packages/host-api: {}
 
   packages/lexer:
     dependencies:

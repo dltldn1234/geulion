@@ -22,6 +22,7 @@
     "@geulion/cli": "workspace:*",
     "@geulion/codegen-js": "workspace:*",
     "@geulion/compiler": "workspace:*",
+    "@geulion/host-api": "workspace:*",
     "@geulion/lexer": "workspace:*",
     "@geulion/parser": "workspace:*",
     "@geulion/semantic": "workspace:*",

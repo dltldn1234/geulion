@@ -7,6 +7,7 @@
     { "path": "./packages/semantic" },
     { "path": "./packages/codegen-js" },
     { "path": "./packages/compiler" },
+    { "path": "./packages/host-api" },
     { "path": "./packages/cli" }
   ]
 }
