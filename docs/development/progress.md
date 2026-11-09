@@ -10,7 +10,7 @@
 - Latest verified main SHA: `00efef442d9c59203229c5ac6eb541d78140ed8b` (2026-11-09; fetched from origin after PR #92 merge)
 - Current unique commits reachable from main: 189 (58 initial + 131)
 - New commits reachable from baseline `afc1b41`: 131
-- Local unmerged Issue #93 commits: 2 (workspace-folder lifecycle implementation and progress-ledger update; PR/CI/merge pending).
+- Local unmerged Issue #93 commits: 3 (workspace-folder lifecycle implementation, progress-ledger update, and PR/CI status update).
 - Remaining to minimum 300: 111
 - Remaining to primary 400: 211
 - Remaining to extended 500: 311
@@ -78,6 +78,7 @@
 - Issue #91 extends `workspace/symbol` to closed `.geul` files under workspace roots, overlays unsaved open buffers, refreshes disk results on each request, skips generated directories and symlinks, and retains open-buffer-only behavior without a file root.
 - Issue #91 local verification passed: Language Server subprocess tests (25), full workspace tests (25 files / 267 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check`. Existing workspace dependencies were reused because a fresh package download could not resolve the npm registry DNS; clean installation remains for CI to verify.
 - Issue #93 handles `workspace/didChangeWorkspaceFolders`, advertises workspace-folder change support, and keeps closed-file and open-buffer symbol results aligned with added/removed roots. Focused Language Server tests pass (26), full workspace tests pass (25 files / 268 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check` pass.
+- Issue #93 PR #94 is open. GitHub has not yet reported a PR workflow run or required check; merge is pending CI.
 
 ## Known limitations
 
