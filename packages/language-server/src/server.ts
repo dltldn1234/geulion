@@ -595,7 +595,11 @@ function handleRequest(method: string, params: JsonObject): unknown {
   }
   if (method === "textDocument/completion") {
     const document = getDocument(params);
-    if (!document) return [];
+    const position = asPosition(getObject(params, "position"));
+    if (!document || !position) return [];
+    const offset = sourceOffset(document.text, position);
+    if (offset < 0 || insideComment(document.text, offset) || insideString(document.text, offset))
+      return { isIncomplete: false, items: [] };
     const items = KEYWORDS.map((label) => ({ label, kind: 14, detail: "GEULION 예약어" }));
     for (const signature of availableSignatures())
       items.push({

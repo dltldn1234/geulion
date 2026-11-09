@@ -3,17 +3,17 @@
 ## Current status
 
 - Current Phase: 10 — Language Server reliability and editor-workflow expansion
-- Current Issue: [#95 — Record Issue 93 merge and main commit target progress](https://github.com/dltldn1234/geulion/issues/95)
-- Working branch: `95-docs/issue-93-progress-ledger`
+- Current Issue: [#97 — Suppress completion suggestions in comments and strings](https://github.com/dltldn1234/geulion/issues/97)
+- Working branch: `97-fix/completion-context`
 - Initial baseline SHA: `afc1b41`
 - Initial main commit count: 58
-- Latest verified main SHA: `a63def36f3ce6bc3624118dd04fc62b2bb191d3c` (2026-11-09; fetched from origin after PR #94 merge)
-- Current unique commits reachable from main: 193 (58 initial + 135)
-- New commits reachable from baseline `afc1b41`: 135
-- Local unmerged Issue #95 commits: 1 (progress-ledger update; PR/CI/merge pending).
-- Remaining to minimum 300: 107
-- Remaining to primary 400: 207
-- Remaining to extended 500: 307
+- Latest verified main SHA: `fb314936aafca4798a2c9c4bec4914d39821b3d5` (2026-11-09; fetched from origin after PR #96 merge)
+- Current unique commits reachable from main: 195 (58 initial + 137)
+- New commits reachable from baseline `afc1b41`: 137
+- Local unmerged Issue #97 commits: 2 (completion-context implementation and progress-ledger update; PR/CI/merge pending).
+- Remaining to minimum 300: 105
+- Remaining to primary 400: 205
+- Remaining to extended 500: 305
 - Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed; [#36](https://github.com/dltldn1234/geulion/pull/36), Merge Commit `04a72ba`, CI passed; [#38](https://github.com/dltldn1234/geulion/pull/38), Merge Commit `0eb762f587a9aae70e9fb539513fcbd5959ca2b1`, CI passed; [#40](https://github.com/dltldn1234/geulion/pull/40), Merge Commit `cc62261e93b67b2519e01e9895a77111680101c1`, CI run `42508397430` passed; [#42](https://github.com/dltldn1234/geulion/pull/42), Merge Commit `30f9f5c07d563fd5867e92cdc5924f56b7cd0b7e`, CI run `42534464926` passed; [#44](https://github.com/dltldn1234/geulion/pull/44), Merge Commit `6b30d98f534c0ff8c3acbbdca50086f0fd9ff325`, CI run `42536546327` passed; [#46](https://github.com/dltldn1234/geulion/pull/46), Merge Commit `de9df5bc305966999609c32cc676f0fe59574df6`, CI run `42538207631` passed; [#48](https://github.com/dltldn1234/geulion/pull/48), Merge Commit `1b0f3f7daa75322516a25ee1c0a87c85d27a4e36`, CI run `42540812517` passed; [#50](https://github.com/dltldn1234/geulion/pull/50), Merge Commit `852915e29178de5475a072a75e2201fa2dc0a36c`, CI run `42542499311` passed; [#52](https://github.com/dltldn1234/geulion/pull/52), Merge Commit `77ae9fe05bb7b4b711fdc642b90f708506d9eb12`, CI run `42543552208` passed; [#54](https://github.com/dltldn1234/geulion/pull/54), Merge Commit `9d3fa6dbc7daa693dbf3d1f7d6e82d3f84eaaeb1`, CI run `42546017229` passed; [#56](https://github.com/dltldn1234/geulion/pull/56), Merge Commit `a5e7aa1471a875be5bb41ef1518a8de550161700`, CI run `42548068173` passed; [#58](https://github.com/dltldn1234/geulion/pull/58), Merge Commit `e22138a0b86a8c0a5b484f58a4e522411d06fa5f`, CI run `42551438200` passed; [#60](https://github.com/dltldn1234/geulion/pull/60), Merge Commit `393ea42803152555e3b8d28ec0891d8421b8b8fe`, CI run `42552939016` passed; [#62](https://github.com/dltldn1234/geulion/pull/62), Merge Commit `b3a6ef15f54ed274852e801fdb6e50ebfb53c901`, CI run `42554061977` passed; [#64](https://github.com/dltldn1234/geulion/pull/64), Merge Commit `9b36d6e1f99c79ecd7643d4ed9d11b732c7091e5`, CI run `42554755892` passed; [#66](https://github.com/dltldn1234/geulion/pull/66), Merge Commit `a095ddd205034d95249bc03932368e97ad20b3b9`, CI run `42555621830` passed; [#68](https://github.com/dltldn1234/geulion/pull/68), Merge Commit `5ea8d3fa2862ec199173fdae5c7cc85ee1e7e3a3`, CI run `42556270362` passed; [#70](https://github.com/dltldn1234/geulion/pull/70), Merge Commit `55662e2eaab49a63a497207eee91b3b915cb5f21`, CI run `42558581415` passed; [#72](https://github.com/dltldn1234/geulion/pull/72), Merge Commit `99094715bab6327056addeee0cd0f4d482ee7e82`, CI run `42559536742` passed; [#74](https://github.com/dltldn1234/geulion/pull/74), Merge Commit `43702585d2fddb5653b2df584162d7033e834fcf`, CI run `42563653079` passed.; [#76](https://github.com/dltldn1234/geulion/pull/76), Merge Commit `9472b625266222253cf422c24f352ce1e9f41472`, CI passed.
 - Latest merged slice: [PR #80](https://github.com/dltldn1234/geulion/pull/80), Merge Commit `c1f868b59948711084588332bec4f7c7f992e5fd`, CI run `42576077086` passed; Issue #79 closed as completed.
 - [PR #82](https://github.com/dltldn1234/geulion/pull/82) completed Issue #81 workspace symbol search and merged as `bfb4effefb1fac3181b21d0f897028eac74e9d3a`; CI passed and Issue #81 is closed.
@@ -23,6 +23,7 @@
 - [PR #90](https://github.com/dltldn1234/geulion/pull/90) recorded the PR #88 merge and verified 184-commit main snapshot; Merge Commit `45f1374d0f55fca780c66b48f03410ae6183afeb`, CI run `42589945610` passed, and Issue #89 is closed.
 - [PR #92](https://github.com/dltldn1234/geulion/pull/92) completed Issue #91 closed-workspace symbol search; Merge Commit `00efef442d9c59203229c5ac6eb541d78140ed8b`, CI run `42595029984` passed, and Issue #91 is closed.
 - [PR #94](https://github.com/dltldn1234/geulion/pull/94) completed Issue #93 workspace-folder lifecycle updates; Merge Commit `a63def36f3ce6bc3624118dd04fc62b2bb191d3c`, CI run `42596329371` passed, and Issue #93 is closed.
+- [PR #96](https://github.com/dltldn1234/geulion/pull/96) recorded the PR #94 merge and verified 193-commit main snapshot; Merge Commit `fb314936aafca4798a2c9c4bec4914d39821b3d5`, CI run `42596684292` passed, and Issue #95 is closed.
 
 ## Completed work
 
@@ -80,6 +81,7 @@
 - Issue #91 local verification passed: Language Server subprocess tests (25), full workspace tests (25 files / 267 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check`. Existing workspace dependencies were reused because a fresh package download could not resolve the npm registry DNS; clean installation remains for CI to verify.
 - Issue #93 handles `workspace/didChangeWorkspaceFolders`, advertises workspace-folder change support, and keeps closed-file and open-buffer symbol results aligned with added/removed roots. Focused Language Server tests pass (26), full workspace tests pass (25 files / 268 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check` pass.
 - Issue #93 PR #94 CI passed, and the PR was merged as recorded above.
+- Issue #97 suppresses Language Server completion suggestions inside comments and strings while retaining normal code and v0.3 completion behavior. Focused Language Server tests pass (27), full workspace tests pass (25 files / 269 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check` pass.
 
 ## Known limitations
 
@@ -89,7 +91,7 @@
 
 ## Next
 
-1. Finish Issue #95 progress-ledger PR, CI, and Merge Commit.
+1. Finish Issue #97 completion-context PR, CI, and Merge Commit.
 2. Continue substantive Phase 10 reliability and editor-workflow Issues; keep the commit-growth ledger based on commits reachable from `main`.
 
 ## Commit growth tracking
