@@ -658,7 +658,10 @@ describe("GEULION Language Server Protocol", () => {
         2,
       );
 
-      const completion = await client.request("textDocument/completion", { textDocument: { uri } });
+      const completion = await client.request("textDocument/completion", {
+        textDocument: { uri },
+        position: { line: 1, character: 6 },
+      });
       const completionLabels = (completion.result as { items: { label: string }[] }).items.map(
         (item) => item.label,
       );
@@ -775,6 +778,7 @@ describe("GEULION Language Server Protocol", () => {
 
       const response = await client.request("textDocument/completion", {
         textDocument: { uri },
+        position: { line: 0, character: 0 },
       });
       const item = (
         response.result as {
@@ -793,6 +797,48 @@ describe("GEULION Language Server Protocol", () => {
           expect(item.insertText).toContain("이름()");
         }
       }
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("suppresses completion in comments and strings, including after escaped quotes", async () => {
+    const client = new LspClient();
+    const uri = "file:///workspace/completion-context.geul";
+    const text = '# 함수 주석\n함수 시작() -> 없음 { 출력("함수 내용") }';
+    const codeLine = text.split("\n")[1] ?? "";
+    const escapedText = '함수 시작() -> 없음 { 출력("문장 \\"안쪽\\" 함수") }';
+    try {
+      await openEditorDocument(client, {
+        languageVersion: "0.3",
+        snippetSupport: true,
+        uri,
+        text,
+      });
+      const request = (position: { line: number; character: number }) =>
+        client.request("textDocument/completion", { textDocument: { uri }, position });
+
+      const comment = await request({ line: 0, character: 4 });
+      expect((comment.result as { items: unknown[] }).items).toEqual([]);
+
+      const string = await request({
+        line: 1,
+        character: codeLine.indexOf("함수 내용") + 3,
+      });
+      expect((string.result as { items: unknown[] }).items).toEqual([]);
+
+      const code = await request({ line: 1, character: 6 });
+      expect((code.result as { items: { label: string }[] }).items.length).toBeGreaterThan(0);
+
+      client.notification("textDocument/didChange", {
+        textDocument: { uri, version: 2 },
+        contentChanges: [{ text: escapedText }],
+      });
+      const escapedString = await request({
+        line: 0,
+        character: escapedText.indexOf("안쪽") + 1,
+      });
+      expect((escapedString.result as { items: unknown[] }).items).toEqual([]);
     } finally {
       await client.close();
     }
