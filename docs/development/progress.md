@@ -10,7 +10,7 @@
 - Latest verified main SHA: `87985e88f42b5925b2e6e55f5ca42079994ed4db` (2026-11-09; fetched from origin after PR #104 merge)
 - Current unique commits reachable from main: 205 (58 initial + 147)
 - New commits reachable from baseline `afc1b41`: 147
-- Local unmerged Issue #103 commits: 1 (progress-ledger update; PR/CI/merge pending).
+- Local unmerged Issue #103 commits: 2 (progress-ledger snapshot and PR/CI status update).
 - Remaining to minimum 300: 95
 - Remaining to primary 400: 195
 - Remaining to extended 500: 295
@@ -90,6 +90,7 @@
 - Issue #101 adds `textDocument/documentHighlight` for semantic declarations and references in the current buffer, with UTF-8/16/32 range coverage and fresh results after edits and close. Focused Language Server tests pass (30), full workspace tests pass (25 files / 272 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check` pass.
 - Issue #101 PR #102 CI passed, and the PR was merged as recorded above.
 - Issue #103 PR #104 CI passed, and the PR was merged as recorded above.
+- Issue #103 PR #106 is open; GitHub has not yet reported its CI workflow run.
 
 ## Known limitations
 
