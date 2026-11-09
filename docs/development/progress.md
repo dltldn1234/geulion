@@ -11,7 +11,7 @@
 - Latest verified main SHA: `9b36d6e1f99c79ecd7643d4ed9d11b732c7091e5` (2026-11-09)
 - Current unique commits reachable from main: 136
 - New commits reachable from main since baseline: 78
-- Issue #65 local unmerged commits: 1 (this progress update).
+- Issue #65 local unmerged commits: 4 (initial progress record, provider implementation, signature-help tests/docs, this progress update).
 - Remaining to minimum 300: 164
 - Remaining to primary 400: 264
 - Remaining to extended 500: 364
@@ -51,17 +51,18 @@
 - Issue #61 adds `check --format json` with compiler diagnostic fields and ranges, stdin source support for unsaved editor buffers, and debounced VS Code diagnostic collection that kills superseded checks and clears results on close. Local workspace tests pass with 18 files / 219 tests; build/typecheck, ESLint, Prettier, and diff checks pass. PR #62 merged after CI run `42554061977` passed.
 - Issue #63 adds lexer-aligned keyword completions, core and version-gated string helper signatures, and a v0.3-only public function snippet. The public snippet was removed from unconditional static snippets because `공개` is contextual, not a reserved word. Local workspace tests pass with 19 files / 221 tests; typecheck, ESLint, Prettier, and diff checks pass. PR #64 merged after CI run `42554755892` passed.
 - Issue #63 / PR #64 completed version-aware VS Code completions and merged with Merge Commit `9b36d6e1f99c79ecd7643d4ed9d11b732c7091e5`.
+- Issue #65 adds parameter and return signatures for core and version-enabled string built-ins, tracks nested delimiters, and ignores strings/comments while selecting arguments. Local workspace tests pass with 20 files / 224 tests; typecheck, ESLint, Prettier, and diff checks pass. PR and CI are pending.
 
 ## Known limitations
 
 - The v0.2 increment covers only four pure string queries. Input, clocks, timers, randomness, persistence, filesystem access, browser APIs, FFI, and modules are not implemented.
-- Phase 7's playable Idle slice and capped offline-production/save migration are merged. Phase 8 language support, CLI check/run commands, structured editor diagnostics, and version-aware completions are implemented; signature help, further Language Server functions, and Phase 9/10 remain.
+- Phase 7's playable Idle slice and capped offline-production/save migration are merged. Phase 8 language support, CLI check/run commands, structured editor diagnostics, version-aware completions, and built-in signature help are implemented; further Language Server functions and Phase 9/10 remain.
 - The Node target remains Node-specific and auto-runs `시작`; only the explicit browser target produces a host-driven module without automatic entrypoint execution.
 
 ## Next
 
-1. Implement version-aware built-in signature help for Issue #65.
-2. Continue Phase 8 with further Language Server functionality, then advance to Phase 9 Playground and Phase 10 stability work.
+1. Open and merge the Issue #65 PR after CI passes.
+2. Continue remaining Phase 8 Language Server functions, then advance to Phase 9 Playground and Phase 10 stability work.
 
 ## Commit growth tracking
 
