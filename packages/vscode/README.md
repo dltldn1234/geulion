@@ -10,7 +10,9 @@ From the repository root, open this folder as a development extension and a GEUL
 code --new-window --extensionDevelopmentPath="$PWD/packages/vscode" examples/idle/game.geul
 ```
 
-The package currently provides editor language support only. Run/check commands and Language Server features are tracked as later Phase 8 work. Do not publish this extension to the Marketplace from this package.
+The extension provides two command-palette actions: `GEULION: 현재 파일 검사` and `GEULION: 현재 파일 실행`. Set `geulion.executable` to the CLI executable; when using this repository's workspace CLI, `geulion.executable` can be `pnpm` and `geulion.arguments` can be `["exec", "geulion"]`. `geulion.languageVersion` selects 0.1, 0.2, or 0.3. The current CLI can check v0.3 programs but cannot run them yet. Commands pass arguments without a shell and stream results to the `GEULION` Output Channel.
+
+Language Server features remain later Phase 8 work. Do not publish this extension to the Marketplace from this package.
 
 ## Validation
 
