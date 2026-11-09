@@ -27,6 +27,7 @@ The package also exposes the `geulion-language-server` executable when installed
 - LSP quick fixes for recognized compiler guidance: a sole top-level function without `시작` can be renamed to the required entrypoint; ambiguous programs and all other diagnostic hints remain informational
 - Full and incremental semantic tokens for keywords, strings, numbers, operators, punctuation, and comments, encoded for the negotiated position format; delta snapshots are capped at four per open document
 - Workspace symbol search across `.geul` files under the negotiated workspace folders (or `rootUri`), with open buffers taking precedence
+- Definition and references can navigate to a uniquely named top-level function declaration in another workspace file when the call is otherwise unresolved in the active file; this is editor navigation only, not cross-file compilation or an import/module system
 - Semantic references and rename edits checked by the GEULION compiler before being returned
 - Cancellation for requests still queued for dispatch, stale document version rejection, and malformed JSON frame recovery
 
@@ -35,5 +36,7 @@ Transport input is bounded to 8 KiB of headers and 16 MiB of body data. Each fra
 Language version defaults to `0.1`. Clients can select `0.1`, `0.2`, or `0.3` with `initializationOptions.languageVersion`, then update it with `workspace/didChangeConfiguration` using `settings.geulion.languageVersion`.
 
 Workspace symbol search parses top-level function declarations in `.geul` files under the workspace roots, including syntactically valid modules that do not contain the program entry function. Overlapping workspace roots are supported, and a file discovered through more than one root contributes symbols only once. It reads disk contents for each search, so file additions, edits, and deletions do not remain stale; an open editor buffer overrides disk contents for the same file. The scan skips `.git`, `node_modules`, `dist`, and `coverage` directories and does not follow symlinks. Without a file workspace root, results come only from open documents. Search does not resolve cross-file references. The server uses the GEULION compiler frontend parser for symbols and compiler analysis for diagnostics and semantic editor features.
+
+Cross-file definition and reference lookup is an editor aid for a call whose name has exactly one top-level function declaration across the current workspace. Duplicate declarations are treated as ambiguous and produce no cross-file target. This lookup does not change compiler diagnostics, function visibility, or the language's single-file program model.
 
 Requests are handled synchronously against the current document snapshot. Since no analysis work continues asynchronously after a request completes, later edits cannot publish an older result; cancellation applies while a request is queued and has not started.
