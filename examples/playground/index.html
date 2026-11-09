@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b1016" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; base-uri 'none'; form-action 'none'; style-src 'self'; script-src 'self' 'sha256-JXyLMCOckcKwn5qJUBKlP8NTO8YZmbe0QRslOwB0Rdo='; worker-src blob:; connect-src 'self'; img-src data:; font-src 'self'"
+    />
+    <title>GEULION Playground</title>
+    <link rel="stylesheet" href="./playground.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "@geulion/ast": "../../packages/ast/dist/index.js",
+          "@geulion/lexer": "../../packages/lexer/dist/index.js",
+          "@geulion/parser": "../../packages/parser/dist/index.js",
+          "@geulion/semantic": "../../packages/semantic/dist/index.js",
+          "@geulion/codegen-js": "../../packages/codegen-js/dist/index.js",
+          "@geulion/compiler": "../../packages/compiler/dist/index.js"
+        }
+      }
+    </script>
+    <script type="module" src="./playground.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="./" aria-label="GEULION Playground home">
+          <span class="brand-mark">ㄱ</span>
+          <span class="brand-name">GEULION <i>PLAYGROUND</i></span>
+        </a>
+        <div class="topbar-right">
+          <span class="local-badge"><span></span> 브라우저에서 컴파일</span>
+          <button class="quiet-button" id="share-button" type="button">코드 공유</button>
+        </div>
+      </header>
+
+      <main>
+        <section class="intro-row">
+          <div>
+            <p class="eyebrow">한국어 프로그래밍 언어</p>
+            <h1>코드를 쓰고, <em>바로 실행하세요.</em></h1>
+            <p class="intro-copy">
+              GEULION v0.3 브라우저 모듈을 로컬에서 컴파일하고 Worker에서 실행합니다.
+            </p>
+          </div>
+          <div class="version-chip"><span>언어 버전</span><b>0.3 · Browser ABI</b></div>
+        </section>
+
+        <section class="workbench" aria-label="GEULION playground">
+          <div class="editor-column">
+            <div class="panel-toolbar">
+              <div class="file-tab">
+                <span class="file-dot"></span><span id="file-name">main.geul</span>
+              </div>
+              <div class="toolbar-actions">
+                <label class="example-picker" for="example-select">예제</label>
+                <select id="example-select" aria-label="예제 선택">
+                  <option value="hello">첫 프로그램</option>
+                  <option value="math">정수 계산</option>
+                  <option value="collections">목록과 선택</option>
+                </select>
+                <button
+                  class="icon-button"
+                  id="reset-button"
+                  type="button"
+                  title="코드 초기화"
+                  aria-label="코드 초기화"
+                >
+                  ↺
+                </button>
+              </div>
+            </div>
+            <div class="editor-wrap">
+              <div class="line-gutter" id="line-gutter" aria-hidden="true">1</div>
+              <textarea
+                id="source-editor"
+                spellcheck="false"
+                autocapitalize="off"
+                autocomplete="off"
+                autocorrect="off"
+                aria-label="GEULION source code"
+              ></textarea>
+            </div>
+            <div class="editor-footer">
+              <span id="editor-status">준비됨</span>
+              <span id="source-size">0 B</span>
+            </div>
+          </div>
+
+          <aside class="run-column">
+            <div class="run-heading">
+              <div>
+                <p class="eyebrow">BROWSER MODULE</p>
+                <h2>실행 설정</h2>
+              </div>
+              <span class="sandbox-mark">Worker</span>
+            </div>
+            <p class="run-description">
+              공개 함수와 매개변수를 선택해 실행합니다. DOM은 Worker에서 사용할 수 없습니다.
+            </p>
+            <div class="export-field">
+              <label for="export-select">공개 함수</label>
+              <select id="export-select" disabled>
+                <option>먼저 컴파일하세요</option>
+              </select>
+            </div>
+            <div id="argument-fields" class="argument-fields" aria-live="polite"></div>
+            <div class="run-buttons">
+              <button id="check-button" class="secondary-button" type="button">검사</button>
+              <button id="run-button" class="primary-button" type="button">
+                <span>▶</span> 컴파일 후 실행
+              </button>
+            </div>
+            <p class="run-note">실행 시간 제한: 2초 · 시간 초과 시 Worker 종료</p>
+          </aside>
+        </section>
+
+        <section class="console-panel" aria-label="실행 결과와 진단">
+          <div class="console-toolbar">
+            <div class="console-title">
+              <span class="console-indicator"></span>
+              <h2>결과</h2>
+            </div>
+            <button class="quiet-button small" id="clear-output" type="button">지우기</button>
+          </div>
+          <div id="output" class="console-output" role="log" aria-live="polite">
+            <p class="empty-output">컴파일 결과와 프로그램 출력을 여기에 표시합니다.</p>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <span>GEULION · 로컬 Playground</span>
+        <span>코드와 출력은 외부 서버로 전송하지 않습니다.</span>
+      </footer>
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    </div>
+  </body>
+</html>

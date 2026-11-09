@@ -1,4 +1,3 @@
-import { Buffer } from "node:buffer";
 import type {
   BlockStatementNode,
   ExpressionNode,
@@ -13,6 +12,24 @@ export interface GeneratedSourceMapping {
   readonly generatedLine: number;
   readonly generatedColumn: number;
   readonly source: SourceSpan;
+}
+
+function encodeBase64Utf8(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let encoded = "";
+  for (let index = 0; index < bytes.length; index += 3) {
+    const first = bytes[index] ?? 0;
+    const second = bytes[index + 1];
+    const third = bytes[index + 2];
+    encoded += alphabet[first >> 2];
+    encoded += alphabet[((first & 0x03) << 4) | ((second ?? 0) >> 4)];
+    encoded +=
+      second === undefined
+        ? "=="
+        : `${alphabet[((second & 0x0f) << 2) | ((third ?? 0) >> 6)]}${third === undefined ? "=" : alphabet[third & 0x3f]}`;
+  }
+  return encoded;
 }
 
 export interface JavaScriptSourceMap {
@@ -339,7 +356,7 @@ ${signatures
     mappings: encoded,
   };
   lines.push(
-    `//# sourceMappingURL=data:application/json;base64,${Buffer.from(JSON.stringify(sourceMap)).toString("base64")}`,
+    `//# sourceMappingURL=data:application/json;base64,${encodeBase64Utf8(JSON.stringify(sourceMap))}`,
   );
   return { code: `${lines.join("\n")}\n`, sourceMap, mappings };
 }
