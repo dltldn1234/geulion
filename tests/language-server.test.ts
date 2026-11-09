@@ -342,6 +342,46 @@ describe("GEULION Language Server Protocol", () => {
     }
   });
 
+  it("refreshes cross-file definitions after a closed source file changes on disk", async () => {
+    const root = await mkdtemp(join(tmpdir(), "geulion-lsp-symbol-cache-"));
+    const libraryPath = join(root, "library.geul");
+    const mainPath = join(root, "main.geul");
+    const libraryUri = pathToFileURL(libraryPath).toString();
+    const mainUri = pathToFileURL(mainPath).toString();
+    const libraryText = "함수 도우미() -> 정수 { 반환 1 }";
+    const mainText = "함수 시작() -> 없음 { 출력(도우미()) }";
+    const client = new LspClient();
+    try {
+      await writeFile(libraryPath, libraryText);
+      await writeFile(mainPath, mainText);
+      const initialized = await client.request("initialize", {
+        capabilities: {},
+        workspaceFolders: [{ uri: pathToFileURL(root).toString(), name: "GEULION" }],
+      });
+      expect(initialized.error).toBeUndefined();
+      client.notification("initialized");
+      client.notification("textDocument/didOpen", {
+        textDocument: { uri: mainUri, languageId: "geulion", version: 1, text: mainText },
+      });
+
+      const definitionAtCall = () =>
+        client.request("textDocument/definition", {
+          textDocument: { uri: mainUri },
+          position: { line: 0, character: mainText.indexOf("도우미") },
+        });
+      expect((await definitionAtCall()).result).toMatchObject({ uri: libraryUri });
+
+      await writeFile(libraryPath, "함수 도구() -> 정수 { 반환 1 }");
+      expect((await definitionAtCall()).result).toBeNull();
+
+      await writeFile(libraryPath, libraryText);
+      expect((await definitionAtCall()).result).toMatchObject({ uri: libraryUri });
+    } finally {
+      await client.close();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("uses rootUri when workspaceFolders is empty and isolates unreadable files", async () => {
     const root = await mkdtemp(join(tmpdir(), "geulion-lsp-root-"));
     const client = new LspClient();
