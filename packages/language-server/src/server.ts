@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { checkSource, type LanguageVersion } from "@geulion/compiler";
+import { checkSource, parseSource, type LanguageVersion } from "@geulion/compiler";
 import type { Diagnostic, SourceSpan, TypeNode } from "@geulion/ast";
 
 type JsonObject = Record<string, unknown>;
@@ -450,6 +450,7 @@ function handleRequest(method: string, params: JsonObject): unknown {
         hoverProvider: true,
         definitionProvider: true,
         documentSymbolProvider: true,
+        workspaceSymbolProvider: true,
         referencesProvider: true,
         renameProvider: { prepareProvider: true },
       },
@@ -574,6 +575,39 @@ function handleRequest(method: string, params: JsonObject): unknown {
       range: sourceRange(fn.span, document.text),
       selectionRange: sourceRange(fn.name.span, document.text),
     }));
+  }
+  if (method === "workspace/symbol") {
+    const query = getString(params, "query") ?? "";
+    const symbols: {
+      name: string;
+      uri: string;
+      offset: number;
+      location: { uri: string; range: Range };
+      kind: number;
+    }[] = [];
+    for (const document of documents.values()) {
+      const parsed = parseSource({
+        path: documentPath(document.uri),
+        source: new TextEncoder().encode(document.text),
+      });
+      for (const fn of parsed.success ? parsed.ast.functions : []) {
+        const name = fn.name.raw;
+        if (!name.includes(query)) continue;
+        symbols.push({
+          name,
+          uri: document.uri,
+          offset: fn.name.span.start.utf16Offset,
+          kind: 12,
+          location: { uri: document.uri, range: sourceRange(fn.span, document.text) },
+        });
+      }
+    }
+    symbols.sort((left, right) => {
+      if (left.name !== right.name) return left.name < right.name ? -1 : 1;
+      if (left.uri !== right.uri) return left.uri < right.uri ? -1 : 1;
+      return left.offset - right.offset;
+    });
+    return symbols.map(({ name, kind, location }) => ({ name, kind, location }));
   }
   if (method === "textDocument/rename") return rename(params);
   throw new RpcError(-32601, `Method not found: ${method}`);
