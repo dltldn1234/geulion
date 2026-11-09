@@ -2,19 +2,19 @@
 
 ## Current status
 
-- Current Phase: 6 — Standard Library & Language Evolution (v0.3 host APIs for Idle)
-- Current Issue: [#51 — Implement v0.3 local persistence adapter for Idle](https://github.com/dltldn1234/geulion/issues/51)
-- Working branch: `51-feat/v03-local-storage-adapter`
+- Current Phase: 7 — GEULION Idle Game (first browser-playable slice)
+- Current Issue: [#53 — Build the first playable Korean Idle browser slice](https://github.com/dltldn1234/geulion/issues/53)
+- Working branch: `53-feat/idle-browser-game`
 - Initial baseline SHA: `afc1b41`
 - Initial main commit count: 58
-- Latest verified main SHA: `852915e29178de5475a072a75e2201fa2dc0a36c` (2026-11-09)
-- Current unique commits reachable from `origin/main`: 97
-- New commits reachable from main since baseline: 39
-- Local unmerged Issue #51 commits: 3 (`779af3a`, `07c312e`, `a42673b`)
-- Remaining to minimum 300: 203
-- Remaining to primary 400: 303
-- Remaining to extended 500: 403
-- Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed; [#36](https://github.com/dltldn1234/geulion/pull/36), Merge Commit `04a72ba`, CI passed; [#38](https://github.com/dltldn1234/geulion/pull/38), Merge Commit `0eb762f587a9aae70e9fb539513fcbd5959ca2b1`, CI passed; [#40](https://github.com/dltldn1234/geulion/pull/40), Merge Commit `cc62261e93b67b2519e01e9895a77111680101c1`, CI run `42508397430` passed; [#42](https://github.com/dltldn1234/geulion/pull/42), Merge Commit `30f9f5c07d563fd5867e92cdc5924f56b7cd0b7e`, CI run `42534464926` passed; [#44](https://github.com/dltldn1234/geulion/pull/44), Merge Commit `6b30d98f534c0ff8c3acbbdca50086f0fd9ff325`, CI run `42536546327` passed; [#46](https://github.com/dltldn1234/geulion/pull/46), Merge Commit `de9df5bc305966999609c32cc676f0fe59574df6`, CI run `42538207631` passed; [#48](https://github.com/dltldn1234/geulion/pull/48), Merge Commit `1b0f3f7daa75322516a25ee1c0a87c85d27a4e36`, CI run `42540812517` passed; [#50](https://github.com/dltldn1234/geulion/pull/50), Merge Commit `852915e29178de5475a072a75e2201fa2dc0a36c`, CI run `42542499311` passed.
+- Latest verified main SHA: `77ae9fe05bb7b4b711fdc642b90f708506d9eb12` (2026-11-09)
+- Current unique commits reachable from main: 103
+- New commits reachable from main since baseline: 45
+- Issue #53 local unmerged commits: 4 (`ae1ce8f`, `f7fa459`, `33a2d38`, `6cc4657`)
+- Remaining to minimum 300: 197
+- Remaining to primary 400: 297
+- Remaining to extended 500: 397
+- Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed; [#36](https://github.com/dltldn1234/geulion/pull/36), Merge Commit `04a72ba`, CI passed; [#38](https://github.com/dltldn1234/geulion/pull/38), Merge Commit `0eb762f587a9aae70e9fb539513fcbd5959ca2b1`, CI passed; [#40](https://github.com/dltldn1234/geulion/pull/40), Merge Commit `cc62261e93b67b2519e01e9895a77111680101c1`, CI run `42508397430` passed; [#42](https://github.com/dltldn1234/geulion/pull/42), Merge Commit `30f9f5c07d563fd5867e92cdc5924f56b7cd0b7e`, CI run `42534464926` passed; [#44](https://github.com/dltldn1234/geulion/pull/44), Merge Commit `6b30d98f534c0ff8c3acbbdca50086f0fd9ff325`, CI run `42536546327` passed; [#46](https://github.com/dltldn1234/geulion/pull/46), Merge Commit `de9df5bc305966999609c32cc676f0fe59574df6`, CI run `42538207631` passed; [#48](https://github.com/dltldn1234/geulion/pull/48), Merge Commit `1b0f3f7daa75322516a25ee1c0a87c85d27a4e36`, CI run `42540812517` passed; [#50](https://github.com/dltldn1234/geulion/pull/50), Merge Commit `852915e29178de5475a072a75e2201fa2dc0a36c`, CI run `42542499311` passed; [#52](https://github.com/dltldn1234/geulion/pull/52), Merge Commit `77ae9fe05bb7b4b711fdc642b90f708506d9eb12`, CI run `42543552208` passed.
 
 ## Completed work
 
@@ -26,7 +26,7 @@
 - Issue #45 implements contextual `공개 함수` parsing, v0.3 public signature metadata, and the v0.3 `check` selector. PR #46 merged with Merge Commit `de9df5b`; CI run `42538207631` passed.
 - Issue #47 adds browser-target modules, public export metadata and invocation, tagged value validation, browser target selection for `emit-js`/`build`, diagnostics, tests, and documentation. PR #48 merged with Merge Commit `1b0f3f7`; CI run `42540812517` passed.
 - Issue #49 adds a platform-neutral v0.3 host API package with bounded save-envelope encode/decode, strict UTF-8 and JSON duplicate-key rejection, value validation, deterministic dictionary encoding, and typed error outcomes. PR #50 merged with Merge Commit `852915e`; CI run `42542499311` passed.
-- Issue #51 adds an injected byte-storage repository with serialized load/save/transact operations, absent-vs-`none` distinction, typed adapter/storage/codec failures, cache updates only after successful writes, tests, and lifecycle documentation. Local commits `779af3a` and `07c312e` are awaiting PR/CI.
+- Issue #51 adds an injected byte-storage repository with serialized load/save/transact operations, absent-vs-`none` distinction, typed adapter/storage/codec failures, cache updates only after successful writes, tests, and lifecycle documentation. PR #52 merged with Merge Commit `77ae9fe`; CI run `42543552208` passed.
 
 ## Verification
 
@@ -40,17 +40,18 @@
 - Issue #47 local verification passed: `pnpm typecheck`, `pnpm test` (13 files / 188 tests), `pnpm lint`, `pnpm format:check`, and `git diff --check`. Focused tests passed (3 files / 70 tests); the latest codec conformance tests passed (1 file / 31 tests).
 - Issue #49 local verification passed: `pnpm typecheck`, `pnpm test` (14 files / 200 tests), `pnpm lint`, `pnpm format:check`, and `git diff --check`. Focused host API tests passed (1 file / 12 tests).
 - Issue #51 local verification passed: `pnpm typecheck`, `pnpm test` (14 files / 205 tests), `pnpm lint`, `pnpm format:check`, and `git diff --check`. Focused host API tests passed (1 file / 17 tests).
+- Issue #53 currently adds the first Korean Idle browser UI and GEULION v0.3 game module. Local GEULION ABI gameplay checks pass (10 assertions), save adapter checks pass (14 assertions), and the repository suite passes with 15 files / 207 tests. Full lint, format, typecheck, and diff checks passed before progress-document edits. Browser page rendered in the local in-app browser; click/refresh automation remains unverified.
 
 ## Known limitations
 
 - The v0.2 increment covers only four pure string queries. Input, clocks, timers, randomness, persistence, filesystem access, browser APIs, FFI, and modules are not implemented.
-- The v0.3 browser module, invocation ABI, and save-envelope codec are merged. The Issue #51 repository adapter is under PR review; concrete storage backend and Idle UI/runtime integration remain separate work.
+- The v0.3 browser module, invocation ABI, and save-envelope codec are merged. Issue #51 is merged. Issue #53 supplies a localStorage backend and the first Idle UI/runtime integration; broader Phase 7 features such as richer statistics, offline production, and visual polish remain.
 - The Node target remains Node-specific and auto-runs `시작`; only the explicit browser target produces a host-driven module without automatic entrypoint execution.
 
 ## Next
 
-1. Push Issue #51 and complete PR/CI/merge flow.
-2. Build the Idle UI and game logic against the merged v0.3 browser, persistence, and ABI contracts.
+1. Complete Issue #53 PR #54 CI, review, and merge.
+2. Continue Phase 7 with remaining gameplay, balance, and runtime/browser verification slices.
 
 ## Commit growth tracking
 
