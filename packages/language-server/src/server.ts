@@ -122,6 +122,7 @@ let languageVersion: LanguageVersion = "0.1";
 let positionEncoding: PositionEncoding = "utf-16";
 let clientSupportsSnippets = false;
 let workspaceRoots: string[] = [];
+let workspaceFoldersManaged = false;
 let initialized = false;
 let initializationComplete = false;
 let shutdownRequested = false;
@@ -366,6 +367,19 @@ function workspaceRootPaths(params: JsonObject): string[] {
   return [...new Set(folderRoots.length > 0 ? folderRoots : root ? [fileURLToPath(root)] : [])];
 }
 
+function workspaceFolderPaths(folders: unknown): string[] {
+  if (!Array.isArray(folders)) return [];
+  return [
+    ...new Set(
+      folders.flatMap((folder) => {
+        const uri = getString(isObject(folder) ? folder : undefined, "uri");
+        const normalized = uri ? fileUri(uri) : undefined;
+        return normalized ? [fileURLToPath(normalized)] : [];
+      }),
+    ),
+  ];
+}
+
 function workspaceFiles(root: string): string[] {
   const files: string[] = [];
   const visit = (directory: string): void => {
@@ -553,11 +567,13 @@ function handleRequest(method: string, params: JsonObject): unknown {
     if (requestedVersion && LANGUAGE_VERSIONS.has(requestedVersion as LanguageVersion))
       languageVersion = requestedVersion as LanguageVersion;
     workspaceRoots = workspaceRootPaths(params);
+    workspaceFoldersManaged = Array.isArray(params.workspaceFolders);
     initialized = true;
     return {
       capabilities: {
         positionEncoding,
         textDocumentSync: { openClose: true, change: 1 },
+        workspace: { workspaceFolders: { supported: true, changeNotifications: true } },
         completionProvider: { resolveProvider: false },
         signatureHelpProvider: { triggerCharacters: ["(", ","], retriggerCharacters: [","] },
         hoverProvider: true,
@@ -803,6 +819,17 @@ function handleNotification(method: string, params: JsonObject): void {
     return;
   }
   if (!initialized || !initializationComplete || shutdownRequested) return;
+  if (method === "workspace/didChangeWorkspaceFolders") {
+    const event = getObject(params, "event");
+    const removed = workspaceFolderPaths(event?.removed);
+    const removedSet = new Set(removed);
+    const added = workspaceFolderPaths(event?.added);
+    workspaceRoots = workspaceFoldersManaged
+      ? [...new Set([...workspaceRoots, ...added])].filter((root) => !removedSet.has(root))
+      : added;
+    workspaceFoldersManaged = true;
+    return;
+  }
   if (method === "textDocument/didOpen") {
     const textDocument = getObject(params, "textDocument");
     const uri = getString(textDocument, "uri");

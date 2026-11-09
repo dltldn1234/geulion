@@ -265,6 +265,73 @@ describe("GEULION Language Server Protocol", () => {
     }
   });
 
+  it("updates closed-file symbols as workspace folders are added and removed", async () => {
+    const roots = await Promise.all(
+      ["fallback", "added", "replacement"].map(() =>
+        mkdtemp(join(tmpdir(), "geulion-lsp-folder-change-")),
+      ),
+    );
+    const [fallbackRoot, addedRoot, replacementRoot] = roots;
+    if (!fallbackRoot || !addedRoot || !replacementRoot) throw new Error("missing test root");
+    const client = new LspClient();
+    try {
+      await writeFile(join(fallbackRoot, "fallback.geul"), "함수 이전워크스페이스() -> 없음 { }");
+      await writeFile(join(addedRoot, "added.geul"), "함수 추가된워크스페이스() -> 없음 { }");
+      await writeFile(
+        join(replacementRoot, "replacement.geul"),
+        "함수 교체워크스페이스() -> 없음 { }",
+      );
+      const initialized = await client.request("initialize", {
+        capabilities: {},
+        rootUri: pathToFileURL(fallbackRoot).toString(),
+      });
+      const capabilities = (initialized.result as { capabilities: Record<string, unknown> })
+        .capabilities;
+      expect(capabilities.workspace).toEqual({
+        workspaceFolders: { supported: true, changeNotifications: true },
+      });
+      client.notification("initialized");
+
+      const beforeChange = await client.request("workspace/symbol", { query: "" });
+      expect((beforeChange.result as { name: string }[]).map(({ name }) => name)).toEqual([
+        "이전워크스페이스",
+      ]);
+
+      const addedUri = pathToFileURL(addedRoot).toString();
+      client.notification("workspace/didChangeWorkspaceFolders", {
+        event: { added: [{ uri: addedUri, name: "Added" }], removed: [] },
+      });
+      const afterAdd = await client.request("workspace/symbol", { query: "" });
+      expect((afterAdd.result as { name: string }[]).map(({ name }) => name)).toEqual([
+        "추가된워크스페이스",
+      ]);
+
+      const addedDocumentUri = pathToFileURL(join(addedRoot, "added.geul")).toString();
+      client.notification("textDocument/didOpen", {
+        textDocument: {
+          uri: addedDocumentUri,
+          languageId: "geulion",
+          version: 1,
+          text: "함수 열린파일() -> 없음 { }",
+        },
+      });
+      const replacementUri = pathToFileURL(replacementRoot).toString();
+      client.notification("workspace/didChangeWorkspaceFolders", {
+        event: {
+          added: [{ uri: replacementUri, name: "Replacement" }],
+          removed: [{ uri: addedUri, name: "Added" }],
+        },
+      });
+      const afterRemove = await client.request("workspace/symbol", { query: "" });
+      expect((afterRemove.result as { name: string }[]).map(({ name }) => name)).toEqual([
+        "교체워크스페이스",
+      ]);
+    } finally {
+      await client.close();
+      await Promise.all(roots.map((root) => rm(root, { recursive: true, force: true })));
+    }
+  });
+
   it("searches symbols across open documents and refreshes results after changes and close", async () => {
     const client = new LspClient();
     try {
