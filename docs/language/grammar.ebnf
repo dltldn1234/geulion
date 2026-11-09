@@ -8,8 +8,11 @@ Program              = { Separator },
                        EOF ;
 TopLevelTail         = Separator, { Separator }, FunctionDeclaration ;
 
-FunctionDeclaration = "함수", Identifier, "(", [ ParameterList ], ")",
+FunctionDeclaration = [ PublicModifier ], "함수", Identifier, "(", [ ParameterList ], ")",
                        "->", Type, FunctionBody ;
+(* PublicModifier is the identifier normalized as "공개", interpreted only
+   immediately before a top-level function declaration. It remains an identifier token. *)
+PublicModifier       = Identifier("공개") ;
 FunctionBody        = Block ;
 
 ParameterList        = Parameter, { ",", Parameter }, [ "," ] ;
