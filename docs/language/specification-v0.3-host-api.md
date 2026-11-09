@@ -1,6 +1,6 @@
 # GEULION v0.3 Browser Module and Host API Specification
 
-**Status: Normative design contract for the v0.3 browser-module implementation.** This document specifies the source export marker, browser compilation target, invocation ABI, value transport, and save-envelope validation. It does not claim that these features are implemented. The existing v0.1 and v0.2 contracts remain unchanged.
+**Status: Normative contract.** This document specifies the source export marker, browser compilation target, invocation ABI, value transport, and save-envelope validation. Issues #45 and #47 implement public declarations, browser module generation, invocation validation, and browser CLI targets; the save-envelope remains a host-owned contract without a GEULION persistence implementation. The existing v0.1 and v0.2 contracts remain unchanged.
 
 ## 1. Version and target selection
 
@@ -123,6 +123,7 @@ interface Diagnostic {
     | "GE2002"
     | "GE2003"
     | "GE2004"
+    | "GE2005"
     | "GE3001"
     | "GE3002"
     | "GE3003"

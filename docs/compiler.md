@@ -45,6 +45,16 @@ node --enable-source-maps dist/main.mjs
 
 `check`, `emit-js`, `run`, `build`는 기본 언어 버전 v0.1을 사용합니다. `--language-version 0.2`를 지정하면 문자열 표준 함수 `문자열길이`, `문자열포함`, `문자열시작`, `문자열끝`을 사용할 수 있습니다. 길이는 Unicode scalar 수를 반환하며 검색과 접두/접미 비교는 정규화하지 않은 정확한 scalar 열을 사용합니다. `tokens`와 `parse`는 문법이 버전 간 같으므로 이 옵션을 받지 않습니다. 생성된 JavaScript는 이미 선택한 의미를 포함하므로 실행 때 버전 옵션이 필요하지 않습니다.
 
+v0.3 공개 함수는 `check`에서 `--language-version 0.3`으로 검사하고, 브라우저 모듈은 명시적으로 생성합니다:
+
+```sh
+pnpm exec geulion check main.geul --language-version 0.3
+pnpm exec geulion emit-js main.geul --target browser --language-version 0.3 > main.mjs
+pnpm exec geulion build main.geul --target browser --language-version 0.3 --out-dir dist
+```
+
+브라우저 모듈은 가져올 때 프로그램을 실행하지 않습니다. 생성 모듈의 `createModule(host)`가 공개 서명과 `invoke` 경계를 반환하며, private 함수와 `시작`은 외부에서 호출할 수 없습니다. Node `run`/`build`는 계속 v0.1/v0.2 대상이며 v0.3 browser ABI의 tagged-value 규칙은 [v0.3 규격](language/specification-v0.3-host-api.md)에 있습니다.
+
 생성된 `.mjs`에는 runtime helper가 포함되며 Node.js 기본 모듈만 사용합니다. 실행 시 GEULION 패키지 설치가 필요하지 않습니다. 진입 함수는 생성 코드에서 정확히 한 번 호출합니다.
 
 ## 패키지와 파이프라인
