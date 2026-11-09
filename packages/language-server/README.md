@@ -12,6 +12,10 @@ pnpm build
 node packages/language-server/dist/server.js
 ```
 
+## Focused subprocess coverage
+
+Run `pnpm test:coverage:language-server` from the repository root to build the server and execute its stdio integration suite under Node V8 coverage. The tests launch the server as a child process, which c8 collects along with the test runner. The report includes the compiled server entry point and uses its source map to report TypeScript coverage for `src/server.ts`; it prints a text summary and writes machine-readable JSON under the ignored `coverage/language-server/` directory. This focused report is diagnostic and does not enforce a global percentage threshold.
+
 The package also exposes the `geulion-language-server` executable when installed by a workspace-aware package manager. Start one process per client connection and attach its standard input and output to the LSP transport.
 
 ## Capabilities
