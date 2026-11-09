@@ -85,6 +85,32 @@ const STRING_FUNCTIONS = [
     ],
   },
 ];
+const KEYWORD_DOCUMENTATION = {
+  상수: "값을 한 번만 바인딩합니다. 이후 대입할 수 없습니다.",
+  변수: "다시 대입할 수 있는 지역 값을 선언합니다.",
+  함수: "매개변수와 반환 타입을 갖는 함수를 선언합니다.",
+  반환: "현재 함수에서 값을 반환합니다.",
+  만약: "조건이 참일 때 block을 실행합니다.",
+  아니면: "앞선 조건이 거짓일 때 대체 block을 실행합니다.",
+  동안: "조건이 참인 동안 block을 반복합니다.",
+  중단: "가장 안쪽 반복문을 종료합니다.",
+  계속: "가장 안쪽 반복문의 다음 반복으로 이동합니다.",
+  그리고: "왼쪽과 오른쪽 조건이 모두 참인지 확인합니다.",
+  또는: "왼쪽 또는 오른쪽 조건이 참인지 확인합니다.",
+  아니다: "불리언 값을 반전합니다.",
+  참: "참을 나타내는 불리언 literal입니다.",
+  거짓: "거짓을 나타내는 불리언 literal입니다.",
+  정수: "부호 있는 64-bit 정수 타입입니다.",
+  실수: "IEEE 754 binary64 실수 타입입니다.",
+  문자열: "Unicode scalar 열을 저장하는 불변 문자열 타입입니다.",
+  불리언: "`참` 또는 `거짓`을 갖는 타입입니다.",
+  없음: "값을 반환하지 않는 함수의 반환 타입입니다.",
+  목록: "같은 타입의 값을 순서대로 저장하는 타입 생성자입니다.",
+  사전: "문자열 key와 같은 타입의 value를 저장하는 타입 생성자입니다.",
+  선택: "값이 있거나 없을 수 있는 타입 생성자입니다.",
+  일부: "선택 타입에 값이 있음을 나타냅니다.",
+  비어있음: "값이 없는 선택 값을 나타냅니다.",
+};
 
 function activate(context, vscodeApi, spawnProcess = spawn) {
   const vscode = vscodeApi ?? require("vscode");
@@ -257,6 +283,39 @@ function activate(context, vscodeApi, spawnProcess = spawn) {
       vscode.languages.registerSignatureHelpProvider("geulion", signatureProvider, "(", ","),
     );
   }
+  if (vscode.languages?.registerHoverProvider) {
+    const hoverProvider = {
+      provideHover(document, position) {
+        if (isInsideComment(document.getText(), document.offsetAt(position))) return undefined;
+        const range = document.getWordRangeAtPosition(
+          position,
+          /[\p{ID_Start}_][\p{ID_Continue}_]*/u,
+        );
+        if (!range) return undefined;
+        const word = document.getText(range);
+        const configuration = vscode.workspace.getConfiguration("geulion", document.uri);
+        const version = configuration.get("languageVersion", "0.1");
+        const availableFunctions =
+          version === "0.2" || version === "0.3"
+            ? [...CORE_FUNCTIONS, ...STRING_FUNCTIONS]
+            : CORE_FUNCTIONS;
+        const fn = availableFunctions.find((candidate) => candidate.label === word);
+        let markdown;
+        if (fn) {
+          markdown = `**${formatFunctionSignature(fn)}**\n\n${fn.parameters.map((parameter) => parameter.documentation).join("; ")}`;
+        } else if (word === "공개" && version === "0.3") {
+          markdown =
+            "`공개 함수`는 v0.3 브라우저 모듈에서 host가 호출할 수 있는 함수를 선언합니다.";
+        } else if (Object.hasOwn(KEYWORD_DOCUMENTATION, word)) {
+          markdown = KEYWORD_DOCUMENTATION[word];
+        } else {
+          return undefined;
+        }
+        return new vscode.Hover(new vscode.MarkdownString(markdown), range);
+      },
+    };
+    context.subscriptions.push(vscode.languages.registerHoverProvider("geulion", hoverProvider));
+  }
   return { output };
 }
 
@@ -323,6 +382,46 @@ function findActiveCall(source, cursorOffset) {
     if (delimiters[index].call) return delimiters[index].call;
   }
   return undefined;
+}
+
+function isInsideComment(source, cursorOffset) {
+  let inString = false;
+  let escaped = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+  for (let index = 0; index < cursorOffset; index += 1) {
+    const current = source[index];
+    const next = source[index + 1];
+    if (inLineComment) {
+      if (current === "\n" || current === "\r") inLineComment = false;
+      else continue;
+    }
+    if (inBlockComment) {
+      if (current === "*" && next === "/") {
+        inBlockComment = false;
+        index += 1;
+      }
+      continue;
+    }
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (current === "\\") escaped = true;
+      else if (current === '"') inString = false;
+      continue;
+    }
+    if (current === '"') {
+      inString = true;
+      continue;
+    }
+    if (current === "/" && next === "/") {
+      inLineComment = true;
+      index += 1;
+    } else if (current === "/" && next === "*") {
+      inBlockComment = true;
+      index += 1;
+    }
+  }
+  return inLineComment || inBlockComment;
 }
 
 function formatFunctionSignature(fn) {
