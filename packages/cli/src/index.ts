@@ -37,6 +37,8 @@ function printHelp(): void {
       "  geulion tokens <file.geul>",
       "  geulion parse <file.geul>",
       "  geulion check <file.geul> [--language-version 0.2|0.3]",
+      "  geulion check <file.geul> [--format json]",
+      "  geulion check - [--format json]  # read source from stdin",
       "  geulion emit-js <file.geul> [--target browser --language-version 0.3]",
       "  geulion run <file.geul> [--language-version 0.2]",
       "  geulion build <file.geul> [--out-dir <directory>] [--target browser --language-version 0.3]",
@@ -47,7 +49,7 @@ function printHelp(): void {
 
 function readSource(path: string): Buffer | undefined {
   try {
-    return readFileSync(path);
+    return path === "-" ? readFileSync(0) : readFileSync(path);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     process.stderr.write(`오류: 파일을 읽을 수 없습니다: ${path}\n${message}\n`);
@@ -158,12 +160,19 @@ function inspectFile(
   path: string,
   languageVersion: LanguageVersion,
   target: CompilationTarget,
+  format: "text" | "json" = "text",
 ): number {
   let source: Buffer;
   try {
-    source = readFileSync(path);
+    source = path === "-" ? readFileSync(0) : readFileSync(path);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    if (command === "check" && format === "json") {
+      process.stdout.write(
+        `${JSON.stringify({ version: 1, success: false, diagnostics: [], suppressedCount: 0, error: { code: "file-read", message } })}\n`,
+      );
+      return 2;
+    }
     process.stderr.write(`오류: 파일을 읽을 수 없습니다: ${path}\n${message}\n`);
     return 2;
   }
@@ -181,6 +190,16 @@ function inspectFile(
 
   if (command === "check") {
     const result = checkSource({ path, source, languageVersion });
+    if (format === "json") {
+      process.stdout.write(
+        `${JSON.stringify({ version: 1, success: result.success, diagnostics: result.diagnostics, suppressedCount: result.suppressedCount })}\n`,
+      );
+      return result.success
+        ? 0
+        : result.diagnostics.some((diagnostic) => diagnostic.phase === "internal")
+          ? 2
+          : 1;
+    }
     return result.success
       ? 0
       : printDiagnostics(result.diagnostics, source, result.suppressedCount);
@@ -237,9 +256,19 @@ export function runCli(args: readonly string[]): number {
     let hasOutputDirectory = false;
     let target: CompilationTarget = "node";
     let hasTarget = false;
+    let format: "text" | "json" = "text";
+    let hasFormat = false;
     for (let index = 2; index < args.length; index += 1) {
       const option = args[index];
-      if (option === "--language-version" && !hasLanguageVersion) {
+      if (command === "check" && option === "--format" && !hasFormat) {
+        if (args[index + 1] !== "json") {
+          process.stderr.write("오류: check --format은 json만 지원합니다.\n");
+          return 2;
+        }
+        format = "json";
+        hasFormat = true;
+        index += 1;
+      } else if (option === "--language-version" && !hasLanguageVersion) {
         const value = args[index + 1];
         if (value !== "0.1" && value !== "0.2" && value !== "0.3") {
           process.stderr.write("오류: --language-version은 0.1, 0.2 또는 0.3이어야 합니다.\n");
@@ -305,7 +334,7 @@ export function runCli(args: readonly string[]): number {
     if (command === "build") {
       return buildFile(path, outputDirectory, languageVersion, target);
     }
-    return inspectFile(command, path, languageVersion, target);
+    return inspectFile(command, path, languageVersion, target, format);
   }
 
   process.stderr.write(`Unknown command: ${args.join(" ")}\nRun 'geulion --help' for usage.\n`);
