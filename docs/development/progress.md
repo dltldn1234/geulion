@@ -11,7 +11,7 @@
 - Latest verified main SHA: `b3a6ef15f54ed274852e801fdb6e50ebfb53c901` (2026-11-09)
 - Current unique commits reachable from main: 131
 - New commits reachable from main since baseline: 73
-- Issue #63 local unmerged commits: 1 (this progress update).
+- Issue #63 local unmerged commits: 4 (initial progress record, completion implementation, completion tests/docs, this progress update).
 - Remaining to minimum 300: 169
 - Remaining to primary 400: 269
 - Remaining to extended 500: 369
@@ -49,6 +49,7 @@
 - Issue #59 adds VS Code check/run command registrations, per-user CLI executable and argument settings, explicit language version selection, no-shell process invocation, Output Channel results, and validation that rejects unsupported v0.3 execution. Local workspace tests pass with 17 files / 216 tests; typecheck, lint, format, and diff checks pass. PR #60 merged after CI passed.
 - Issue #59 / PR #60 completed the VS Code CLI check/run commands and merged with Merge Commit `393ea42803152555e3b8d28ec0891d8421b8b8fe`; CI run `42552939016` passed.
 - Issue #61 adds `check --format json` with compiler diagnostic fields and ranges, stdin source support for unsaved editor buffers, and debounced VS Code diagnostic collection that kills superseded checks and clears results on close. Local workspace tests pass with 18 files / 219 tests; build/typecheck, ESLint, Prettier, and diff checks pass. PR #62 merged after CI run `42554061977` passed.
+- Issue #63 adds lexer-aligned keyword completions, core and version-gated string helper signatures, and a v0.3-only public function snippet. The public snippet was removed from unconditional static snippets because `공개` is contextual, not a reserved word. Local workspace tests pass with 19 files / 221 tests; typecheck, ESLint, Prettier, and diff checks pass. PR and CI are pending.
 
 ## Known limitations
 
