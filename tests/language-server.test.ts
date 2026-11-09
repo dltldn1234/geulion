@@ -126,6 +126,27 @@ class LspClient {
   }
 }
 
+async function openEditorDocument(
+  client: LspClient,
+  options: { languageVersion: string; snippetSupport: boolean; uri: string; text: string },
+): Promise<void> {
+  await client.request("initialize", {
+    capabilities: {
+      textDocument: { completion: { completionItem: { snippetSupport: options.snippetSupport } } },
+    },
+    initializationOptions: { languageVersion: options.languageVersion },
+  });
+  client.notification("initialized");
+  client.notification("textDocument/didOpen", {
+    textDocument: {
+      uri: options.uri,
+      languageId: "geulion",
+      version: 1,
+      text: options.text,
+    },
+  });
+}
+
 describe("GEULION Language Server Protocol", () => {
   it("searches symbols across open documents and refreshes results after changes and close", async () => {
     const client = new LspClient();
@@ -547,6 +568,74 @@ describe("GEULION Language Server Protocol", () => {
         return (message.params as { uri?: string }).uri === uri;
       });
       expect((closed.params as { diagnostics: unknown[] }).diagnostics).toEqual([]);
+    } finally {
+      await client.close();
+    }
+  });
+
+  it.each([
+    { languageVersion: "0.3", snippetSupport: true, expected: true, name: "v0.3 snippets" },
+    { languageVersion: "0.3", snippetSupport: false, expected: true, name: "v0.3 plain text" },
+    { languageVersion: "0.1", snippetSupport: true, expected: false, name: "v0.1" },
+    { languageVersion: "0.2", snippetSupport: true, expected: false, name: "v0.2" },
+  ])("offers the public-function completion for $name clients", async (scenario) => {
+    const client = new LspClient();
+    const uri = "file:///workspace/completion.geul";
+    try {
+      await openEditorDocument(client, {
+        languageVersion: scenario.languageVersion,
+        snippetSupport: scenario.snippetSupport,
+        uri,
+        text: "함수 시작() -> 없음 { 출력(1) }",
+      });
+
+      const response = await client.request("textDocument/completion", {
+        textDocument: { uri },
+      });
+      const item = (
+        response.result as {
+          items: { label: string; insertText?: string; insertTextFormat?: number }[];
+        }
+      ).items.find(({ label }) => label === "공개 함수");
+      expect(item !== undefined).toBe(scenario.expected);
+      if (item) {
+        expect(item.insertText).toContain("공개 함수");
+        expect(item.insertTextFormat).toBe(scenario.snippetSupport ? 2 : undefined);
+        if (scenario.snippetSupport) {
+          expect(item.insertText).toContain("${1:이름}");
+          expect(item.insertText).toContain("-> ${2:없음}");
+        } else {
+          expect(item.insertText).toContain("-> 없음");
+          expect(item.insertText).toContain("이름()");
+        }
+      }
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("returns keyword help and suppresses hover inside comments over stdio", async () => {
+    const client = new LspClient();
+    const uri = "file:///workspace/hover.geul";
+    try {
+      await openEditorDocument(client, {
+        languageVersion: "0.3",
+        snippetSupport: false,
+        uri,
+        text: "# 주석 함수\n함수 시작() -> 없음 { 출력(1) }",
+      });
+
+      const keywordHover = await client.request("textDocument/hover", {
+        textDocument: { uri },
+        position: { line: 1, character: 1 },
+      });
+      expect(JSON.stringify(keywordHover.result)).toContain("매개변수와 반환 타입");
+
+      const commentHover = await client.request("textDocument/hover", {
+        textDocument: { uri },
+        position: { line: 0, character: 6 },
+      });
+      expect(commentHover.result).toBeNull();
     } finally {
       await client.close();
     }
