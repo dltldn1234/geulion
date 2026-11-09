@@ -11,7 +11,7 @@
 - Latest verified main SHA: `393ea42803152555e3b8d28ec0891d8421b8b8fe` (2026-11-09)
 - Current unique commits reachable from main: 125
 - New commits reachable from main since baseline: 67
-- Issue #61 local unmerged commits: 0 before this implementation; changes are in progress.
+- Issue #61 local unmerged commits: 5 (initial progress record, CLI contract, editor diagnostics, multiple-diagnostic coverage, this progress update).
 - Remaining to minimum 300: 175
 - Remaining to primary 400: 275
 - Remaining to extended 500: 375
@@ -46,19 +46,19 @@
 - Issue #55 / PR #56 completed the Phase 7 offline-production slice and merged after CI run `42548068173` passed.
 - Issue #57 adds VS Code `.geul` registration, a TextMate grammar aligned with the lexer keyword table, bracket/comment rules, starter snippets, and theme-aware language icons. The VS Code Extension Development Host loaded `packages/vscode`; 3 focused tests validate manifest paths and lexer coverage. Full workspace tests pass with 16 files / 210 tests; typecheck, lint, format, and diff checks pass.
 - Issue #57 / PR #58 completed Phase 8 language basics and merged after CI run `42551438200` passed.
-- Issue #59 adds VS Code check/run command registrations, per-user CLI executable and argument settings, explicit language version selection, no-shell process invocation, Output Channel results, and validation that rejects unsupported v0.3 execution. Local workspace tests pass with 17 files / 216 tests; typecheck, lint, format, and diff checks pass. The Extension Development Host log confirms extension activation; PR and remote CI are pending.
+- Issue #59 adds VS Code check/run command registrations, per-user CLI executable and argument settings, explicit language version selection, no-shell process invocation, Output Channel results, and validation that rejects unsupported v0.3 execution. Local workspace tests pass with 17 files / 216 tests; typecheck, lint, format, and diff checks pass. PR #60 merged after CI passed.
 - Issue #59 / PR #60 completed the VS Code CLI check/run commands and merged with Merge Commit `393ea42803152555e3b8d28ec0891d8421b8b8fe`; CI run `42552939016` passed.
-- Issue #61 is creating a versioned JSON diagnostics boundary and consuming it in the VS Code editor, retaining structured ranges and avoiding stale asynchronous results.
+- Issue #61 adds `check --format json` with compiler diagnostic fields and ranges, stdin source support for unsaved editor buffers, and debounced VS Code diagnostic collection that kills superseded checks and clears results on close. Local workspace tests pass with 18 files / 219 tests; build/typecheck, ESLint, Prettier, and diff checks pass. PR and CI are pending.
 
 ## Known limitations
 
 - The v0.2 increment covers only four pure string queries. Input, clocks, timers, randomness, persistence, filesystem access, browser APIs, FFI, and modules are not implemented.
-- Phase 7's playable Idle slice and capped offline-production/save migration are merged. Phase 8 language support and CLI check/run commands are implemented; structured editor diagnostics and Language Server functionality remain.
+- Phase 7's playable Idle slice and capped offline-production/save migration are merged. Phase 8 language support, CLI check/run commands, and structured editor diagnostics are implemented; further Language Server functionality remains.
 - The Node target remains Node-specific and auto-runs `시작`; only the explicit browser target produces a host-driven module without automatic entrypoint execution.
 
 ## Next
 
-1. Complete and merge Issue #61 structured diagnostics and VS Code diagnostic collection after CI passes.
+1. Open and merge the Issue #61 PR after CI passes.
 2. Continue Phase 8 with further Language Server functionality, reusing the existing lexer/parser/semantic analyzer.
 
 ## Commit growth tracking
