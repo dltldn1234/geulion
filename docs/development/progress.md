@@ -2,20 +2,20 @@
 
 ## Current status
 
-- Current Phase: 7 — GEULION Idle Game (offline production and save migration)
-- Current Issue: [#55 — Add capped offline production and Idle save migration](https://github.com/dltldn1234/geulion/issues/55)
-- Working branch: `55-feat/idle-offline-progress`
-- Current PR: [#56](https://github.com/dltldn1234/geulion/pull/56), open; CI run `42547909315` passed; merge pending.
+- Current Phase: 8 — VS Code Extension & Language Server (language support foundation)
+- Current Issue: [#57 — Add VS Code GEULION language basics](https://github.com/dltldn1234/geulion/issues/57)
+- Working branch: `57-feat/vscode-language-basics`
+- Current PR: not opened yet.
 - Initial baseline SHA: `afc1b41`
 - Initial main commit count: 58
-- Latest verified main SHA: `9d3fa6dbc7daa693dbf3d1f7d6e82d3f84eaaeb1` (2026-11-09)
-- Current unique commits reachable from main: 108
-- New commits reachable from main since baseline: 50
-- Issue #55 local unmerged commits: 6 (four feature commits plus two progress updates)
-- Remaining to minimum 300: 192
-- Remaining to primary 400: 292
-- Remaining to extended 500: 392
-- Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed; [#36](https://github.com/dltldn1234/geulion/pull/36), Merge Commit `04a72ba`, CI passed; [#38](https://github.com/dltldn1234/geulion/pull/38), Merge Commit `0eb762f587a9aae70e9fb539513fcbd5959ca2b1`, CI passed; [#40](https://github.com/dltldn1234/geulion/pull/40), Merge Commit `cc62261e93b67b2519e01e9895a77111680101c1`, CI run `42508397430` passed; [#42](https://github.com/dltldn1234/geulion/pull/42), Merge Commit `30f9f5c07d563fd5867e92cdc5924f56b7cd0b7e`, CI run `42534464926` passed; [#44](https://github.com/dltldn1234/geulion/pull/44), Merge Commit `6b30d98f534c0ff8c3acbbdca50086f0fd9ff325`, CI run `42536546327` passed; [#46](https://github.com/dltldn1234/geulion/pull/46), Merge Commit `de9df5bc305966999609c32cc676f0fe59574df6`, CI run `42538207631` passed; [#48](https://github.com/dltldn1234/geulion/pull/48), Merge Commit `1b0f3f7daa75322516a25ee1c0a87c85d27a4e36`, CI run `42540812517` passed; [#50](https://github.com/dltldn1234/geulion/pull/50), Merge Commit `852915e29178de5475a072a75e2201fa2dc0a36c`, CI run `42542499311` passed; [#52](https://github.com/dltldn1234/geulion/pull/52), Merge Commit `77ae9fe05bb7b4b711fdc642b90f708506d9eb12`, CI run `42543552208` passed; [#54](https://github.com/dltldn1234/geulion/pull/54), Merge Commit `9d3fa6dbc7daa693dbf3d1f7d6e82d3f84eaaeb1`, CI run `42546017229` passed.
+- Latest verified main SHA: `a5e7aa1471a875be5bb41ef1518a8de550161700` (2026-11-09)
+- Current unique commits reachable from main: 115
+- New commits reachable from main since baseline: 57
+- Issue #57 local unmerged commits: 5 (four implementation/test commits plus this progress update)
+- Remaining to minimum 300: 185
+- Remaining to primary 400: 285
+- Remaining to extended 500: 385
+- Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed; [#36](https://github.com/dltldn1234/geulion/pull/36), Merge Commit `04a72ba`, CI passed; [#38](https://github.com/dltldn1234/geulion/pull/38), Merge Commit `0eb762f587a9aae70e9fb539513fcbd5959ca2b1`, CI passed; [#40](https://github.com/dltldn1234/geulion/pull/40), Merge Commit `cc62261e93b67b2519e01e9895a77111680101c1`, CI run `42508397430` passed; [#42](https://github.com/dltldn1234/geulion/pull/42), Merge Commit `30f9f5c07d563fd5867e92cdc5924f56b7cd0b7e`, CI run `42534464926` passed; [#44](https://github.com/dltldn1234/geulion/pull/44), Merge Commit `6b30d98f534c0ff8c3acbbdca50086f0fd9ff325`, CI run `42536546327` passed; [#46](https://github.com/dltldn1234/geulion/pull/46), Merge Commit `de9df5bc305966999609c32cc676f0fe59574df6`, CI run `42538207631` passed; [#48](https://github.com/dltldn1234/geulion/pull/48), Merge Commit `1b0f3f7daa75322516a25ee1c0a87c85d27a4e36`, CI run `42540812517` passed; [#50](https://github.com/dltldn1234/geulion/pull/50), Merge Commit `852915e29178de5475a072a75e2201fa2dc0a36c`, CI run `42542499311` passed; [#52](https://github.com/dltldn1234/geulion/pull/52), Merge Commit `77ae9fe05bb7b4b711fdc642b90f708506d9eb12`, CI run `42543552208` passed; [#54](https://github.com/dltldn1234/geulion/pull/54), Merge Commit `9d3fa6dbc7daa693dbf3d1f7d6e82d3f84eaaeb1`, CI run `42546017229` passed; [#56](https://github.com/dltldn1234/geulion/pull/56), Merge Commit `a5e7aa1471a875be5bb41ef1518a8de550161700`, CI run `42548068173` passed.
 
 ## Completed work
 
@@ -43,17 +43,19 @@
 - Issue #51 local verification passed: `pnpm typecheck`, `pnpm test` (14 files / 205 tests), `pnpm lint`, `pnpm format:check`, and `git diff --check`. Focused host API tests passed (1 file / 17 tests).
 - Issue #53 added the first Korean Idle browser UI and GEULION v0.3 game module. PR #54 merged with CI run `42546017229` passing. Local GEULION ABI gameplay checks passed (22 assertions), and save adapter preservation/migration checks passed. The browser page rendered in the local in-app browser; click/refresh automation remains unverified.
 - Issue #55 adds a GEULION `오프라인경과` export capped at eight hours, validates host clock deltas, reports offline gains and clock errors, persists a timestamp alongside the game state, and migrates valid v1.0.0 saves once to v1.1.0. The repository suite passes with 15 files / 207 tests; TypeScript build/test typecheck, ESLint, Prettier, and `git diff --check` pass. The browser runtime could not be launched in this environment because local socket binding is denied; actual tab-hide/resume interaction remains unverified.
+- Issue #55 / PR #56 completed the Phase 7 offline-production slice and merged after CI run `42548068173` passed.
+- Issue #57 adds VS Code `.geul` registration, a TextMate grammar aligned with the lexer keyword table, bracket/comment rules, starter snippets, and theme-aware language icons. The VS Code Extension Development Host loaded `packages/vscode`; 3 focused tests validate manifest paths and lexer coverage. Full workspace tests pass with 16 files / 210 tests; typecheck, lint, format, and diff checks pass.
 
 ## Known limitations
 
 - The v0.2 increment covers only four pure string queries. Input, clocks, timers, randomness, persistence, filesystem access, browser APIs, FFI, and modules are not implemented.
-- The v0.3 browser module, invocation ABI, save-envelope codec, localStorage backend, and first playable Idle slice are merged. Issue #55 adds capped offline production and v1.0.0 save migration; richer statistics, balance work, and broader runtime/browser verification remain in Phase 7.
+- Phase 7's playable Idle slice and capped offline-production/save migration are merged. Phase 8 has static VS Code language support; execution/check commands and Language Server functionality remain.
 - The Node target remains Node-specific and auto-runs `시작`; only the explicit browser target produces a host-driven module without automatic entrypoint execution.
 
 ## Next
 
-1. Open and merge the Issue #55 PR after required CI and review checks pass.
-2. Continue Phase 7 with remaining gameplay, balance, and runtime/browser verification slices.
+1. Open and merge the Issue #57 PR after required CI and review checks pass.
+2. Continue Phase 8 with GEULION run/check commands and Language Server diagnostics, reusing the existing lexer/parser/semantic analyzer.
 
 ## Commit growth tracking
 
