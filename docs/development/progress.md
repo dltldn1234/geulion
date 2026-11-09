@@ -3,18 +3,18 @@
 ## Current status
 
 - Current Phase: 8 — VS Code source navigation
-- Current Issue: [#71 — Add compiler-backed VS Code definitions and outline](https://github.com/dltldn1234/geulion/issues/71)
-- Working branch: `71-feat/vscode-symbol-navigation`
-- Current PR: not opened yet.
+- Current Issue: [#73 — Add compiler-backed references and rename](https://github.com/dltldn1234/geulion/issues/73)
+- Working branch: `73-feat/vscode-references-rename`
+- Current PR: [#74 — Add compiler-backed references and rename](https://github.com/dltldn1234/geulion/pull/74).
 - Initial baseline SHA: `afc1b41`
 - Initial main commit count: 58
-- Latest verified main SHA: `55662e2eaab49a63a497207eee91b3b915cb5f21` (2026-11-09)
-- Current unique commits reachable from main: 150
-- New commits reachable from main since baseline: 92
-- Issue #71 local unmerged commits: 3 (provider implementation, focused tests, and progress-tracking commit; not yet merged).
-- Remaining to minimum 300: 150
-- Remaining to primary 400: 250
-- Remaining to extended 500: 350
+- Latest verified main SHA: `99094715bab6327056addeee0cd0f4d482ee7e82` (2026-11-09)
+- Current unique commits reachable from main: 154
+- New commits reachable from main since baseline: 96
+- Issue #73 local unmerged commits: 4 (implementation, tests, and progress tracking); PR #74 is open.
+- Remaining to minimum 300: 146
+- Remaining to primary 400: 246
+- Remaining to extended 500: 346
 - Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed; [#36](https://github.com/dltldn1234/geulion/pull/36), Merge Commit `04a72ba`, CI passed; [#38](https://github.com/dltldn1234/geulion/pull/38), Merge Commit `0eb762f587a9aae70e9fb539513fcbd5959ca2b1`, CI passed; [#40](https://github.com/dltldn1234/geulion/pull/40), Merge Commit `cc62261e93b67b2519e01e9895a77111680101c1`, CI run `42508397430` passed; [#42](https://github.com/dltldn1234/geulion/pull/42), Merge Commit `30f9f5c07d563fd5867e92cdc5924f56b7cd0b7e`, CI run `42534464926` passed; [#44](https://github.com/dltldn1234/geulion/pull/44), Merge Commit `6b30d98f534c0ff8c3acbbdca50086f0fd9ff325`, CI run `42536546327` passed; [#46](https://github.com/dltldn1234/geulion/pull/46), Merge Commit `de9df5bc305966999609c32cc676f0fe59574df6`, CI run `42538207631` passed; [#48](https://github.com/dltldn1234/geulion/pull/48), Merge Commit `1b0f3f7daa75322516a25ee1c0a87c85d27a4e36`, CI run `42540812517` passed; [#50](https://github.com/dltldn1234/geulion/pull/50), Merge Commit `852915e29178de5475a072a75e2201fa2dc0a36c`, CI run `42542499311` passed; [#52](https://github.com/dltldn1234/geulion/pull/52), Merge Commit `77ae9fe05bb7b4b711fdc642b90f708506d9eb12`, CI run `42543552208` passed; [#54](https://github.com/dltldn1234/geulion/pull/54), Merge Commit `9d3fa6dbc7daa693dbf3d1f7d6e82d3f84eaaeb1`, CI run `42546017229` passed; [#56](https://github.com/dltldn1234/geulion/pull/56), Merge Commit `a5e7aa1471a875be5bb41ef1518a8de550161700`, CI run `42548068173` passed; [#58](https://github.com/dltldn1234/geulion/pull/58), Merge Commit `e22138a0b86a8c0a5b484f58a4e522411d06fa5f`, CI run `42551438200` passed; [#60](https://github.com/dltldn1234/geulion/pull/60), Merge Commit `393ea42803152555e3b8d28ec0891d8421b8b8fe`, CI run `42552939016` passed; [#62](https://github.com/dltldn1234/geulion/pull/62), Merge Commit `b3a6ef15f54ed274852e801fdb6e50ebfb53c901`, CI run `42554061977` passed; [#64](https://github.com/dltldn1234/geulion/pull/64), Merge Commit `9b36d6e1f99c79ecd7643d4ed9d11b732c7091e5`, CI run `42554755892` passed; [#66](https://github.com/dltldn1234/geulion/pull/66), Merge Commit `a095ddd205034d95249bc03932368e97ad20b3b9`, CI run `42555621830` passed; [#68](https://github.com/dltldn1234/geulion/pull/68), Merge Commit `5ea8d3fa2862ec199173fdae5c7cc85ee1e7e3a3`, CI run `42556270362` passed; [#70](https://github.com/dltldn1234/geulion/pull/70), Merge Commit `55662e2eaab49a63a497207eee91b3b915cb5f21`, CI run `42558581415` passed.
 
 ## Completed work
@@ -59,6 +59,8 @@
 - Issue #69 local verification: full workspace tests pass (22 files / 232 tests), TypeScript build and test typecheck pass, ESLint passes, Prettier passes, and `git diff --check` passes. A local HTTP server could not bind because this environment denies socket creation, so browser layout and clipboard interaction have not been verified in a live tab.
 - Issue #69 / PR #70 completed the local Web Playground and merged with Merge Commit `55662e2eaab49a63a497207eee91b3b915cb5f21`; CI run `42558581415` passed.
 - Issue #71 adds compiler-backed definition and document-symbol providers for declarations and references in the active GEULION buffer. Full workspace tests pass (23 files / 237 tests); TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check` pass.
+- Issue #71 / PR #72 completed compiler-backed definition and document-symbol providers and merged with Merge Commit `99094715bab6327056addeee0cd0f4d482ee7e82`; CI run `42559536742` passed.
+- Issue #73 implements semantic Find All References and Rename in the active document. Focused tests pass (5 tests); workspace tests pass (24 files / 242 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check` pass. Implementation and tests are pushed on PR #74; CI run `42563488097` passed. A subsequent progress-only update is awaiting push and CI.
 
 ## Known limitations
 
@@ -68,8 +70,8 @@
 
 ## Next
 
-1. Finish Issue #71 verification, commit, open its PR, and wait for CI before merging.
-2. Continue with Phase 8 references/LSP work and Phase 10 stability after source navigation is complete.
+1. Wait for PR #74 CI, address review feedback, and merge with a Merge Commit after all required gates pass.
+2. Continue remaining Phase 8 language-server functionality, then Phase 10 stability and optimization.
 
 ## Commit growth tracking
 

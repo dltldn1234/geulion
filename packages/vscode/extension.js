@@ -361,25 +361,124 @@ function activate(context, vscodeApi, spawnProcess = spawn) {
       vscode.languages.registerDocumentSymbolProvider("geulion", documentSymbolProvider),
     );
   }
+  if (vscode.languages?.registerReferenceProvider) {
+    const referenceProvider = {
+      async provideReferences(document, position, referenceContext) {
+        const analysis = await analyzeDocument(document, vscode);
+        if (!analysis?.success) return [];
+        const match = findResolvedReference(analysis.program, document.offsetAt(position));
+        if (!match?.symbol.span) return [];
+        return [...analysis.program.references]
+          .filter(
+            ([reference, symbolId]) =>
+              symbolId === match.symbolId &&
+              (referenceContext?.includeDeclaration ||
+                !isDeclarationReference(reference, match.symbol)),
+          )
+          .map(
+            ([reference]) => new vscode.Location(document.uri, sourceRange(reference.span, vscode)),
+          );
+      },
+    };
+    context.subscriptions.push(
+      vscode.languages.registerReferenceProvider("geulion", referenceProvider),
+    );
+  }
+  if (vscode.languages?.registerRenameProvider) {
+    const renameProvider = {
+      async prepareRename(document, position) {
+        const analysis = await analyzeDocument(document, vscode);
+        if (!analysis?.success) return undefined;
+        const match = findResolvedReference(analysis.program, document.offsetAt(position));
+        if (!match?.symbol.span) return undefined;
+        return {
+          range: sourceRange(match.reference.span, vscode),
+          placeholder: match.reference.raw,
+        };
+      },
+      async provideRenameEdits(document, position, newName) {
+        if (!isIdentifier(newName)) return undefined;
+        const analysis = await analyzeDocument(document, vscode);
+        if (!analysis?.success) return undefined;
+        const match = findResolvedReference(analysis.program, document.offsetAt(position));
+        if (!match?.symbol.span) return undefined;
+        const references = [...analysis.program.references].filter(
+          ([, symbolId]) => symbolId === match.symbolId,
+        );
+        const source = document.getText();
+        const edits = references
+          .map(([reference]) => ({
+            start: reference.span.start.utf16Offset,
+            end: reference.span.end.utf16Offset,
+          }))
+          .sort((left, right) => right.start - left.start);
+        const renamedSource = edits.reduce(
+          (current, edit) => current.slice(0, edit.start) + newName + current.slice(edit.end),
+          source,
+        );
+        const version = languageVersionFor(document, vscode);
+        const pathName = document.uri.fsPath ?? document.uri.path ?? "<editor>";
+        const checked = await checkSourceText(pathName, renamedSource, version);
+        if (!checked?.success) return undefined;
+
+        const workspaceEdit = new vscode.WorkspaceEdit();
+        for (const [reference] of references) {
+          workspaceEdit.replace(document.uri, sourceRange(reference.span, vscode), newName);
+        }
+        return workspaceEdit;
+      },
+    };
+    context.subscriptions.push(vscode.languages.registerRenameProvider("geulion", renameProvider));
+  }
   return { output };
 }
 
 async function analyzeDocument(document, vscode) {
+  const version = languageVersionFor(document, vscode);
+  if (!version) return undefined;
+  const pathName = document.uri.fsPath ?? document.uri.path ?? "<editor>";
+  return checkSourceText(pathName, document.getText(), version);
+}
+
+function languageVersionFor(document, vscode) {
   const configuration = vscode.workspace.getConfiguration("geulion", document.uri);
   const version = configuration.get("languageVersion", "0.1");
-  if (typeof version !== "string" || !LANGUAGE_VERSIONS.has(version)) return undefined;
+  return typeof version === "string" && LANGUAGE_VERSIONS.has(version) ? version : undefined;
+}
+
+async function checkSourceText(pathName, source, version) {
   try {
     compilerModulePromise ??= import("@geulion/compiler");
     const { checkSource } = await compilerModulePromise;
-    const source = document.getText();
     return checkSource({
-      path: document.uri.fsPath ?? document.uri.path ?? "<editor>",
+      path: pathName,
       source: new TextEncoder().encode(source),
       languageVersion: version,
     });
   } catch {
     return undefined;
   }
+}
+
+function findResolvedReference(program, offset) {
+  for (const [reference, symbolId] of program.references) {
+    if (offset < reference.span.start.utf16Offset || offset >= reference.span.end.utf16Offset)
+      continue;
+    const symbol = program.symbols.get(symbolId);
+    if (symbol) return { reference, symbolId, symbol };
+  }
+  return undefined;
+}
+
+function isDeclarationReference(reference, symbol) {
+  return (
+    reference === symbol.declaration?.name ||
+    reference.span.start.utf16Offset === symbol.span?.start.utf16Offset
+  );
+}
+
+function isIdentifier(value) {
+  return typeof value === "string" && /^[\p{ID_Start}_][\p{ID_Continue}_]*$/u.test(value);
 }
 
 function sourceRange(span, vscode) {
