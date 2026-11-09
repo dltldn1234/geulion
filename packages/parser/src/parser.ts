@@ -171,6 +171,21 @@ class RecursiveDescentParser {
     const functions: FunctionDeclarationNode[] = [];
     this.#skipSeparators();
     while (!this.#at(TokenKind.EndOfFile)) {
+      let visibility: FunctionDeclarationNode["visibility"] = "private";
+      if (
+        this.#at(TokenKind.Identifier) &&
+        (this.#current() as IdentifierToken).normalizedName === "공개"
+      ) {
+        if (this.#peek(1).kind !== TokenKind.Function) {
+          this.#fail(
+            "GE1001",
+            "`공개`는 최상위 함수 선언 바로 앞에만 올 수 있습니다.",
+            "`공개 함수 이름(...) -> 타입 { ... }` 형식으로 작성하세요.",
+          );
+        }
+        this.#advance();
+        visibility = "public";
+      }
       if (!this.#at(TokenKind.Function)) {
         this.#fail(
           "GE1001",
@@ -178,7 +193,7 @@ class RecursiveDescentParser {
           "최상위 선언을 `함수 이름(...) -> 타입 { ... }` 형식으로 작성하세요.",
         );
       }
-      functions.push(this.#parseFunctionDeclaration());
+      functions.push(this.#parseFunctionDeclaration(visibility));
       if (!this.#at(TokenKind.EndOfFile) && !this.#skipSeparators()) {
         this.#fail(
           "GE1002",
@@ -192,7 +207,9 @@ class RecursiveDescentParser {
     return { kind: "Program", functions, span: Object.freeze({ start, end: eof.span.end }) };
   }
 
-  #parseFunctionDeclaration(): FunctionDeclarationNode {
+  #parseFunctionDeclaration(
+    visibility: FunctionDeclarationNode["visibility"],
+  ): FunctionDeclarationNode {
     const start = this.#consume(TokenKind.Function, "`함수`가 필요합니다.");
     const name = this.#identifierName(this.#expectIdentifier("함수 이름이 필요합니다."));
     this.#expect(TokenKind.LeftParen, "함수 매개변수 목록에 `(`가 필요합니다.");
@@ -222,6 +239,7 @@ class RecursiveDescentParser {
 
     return {
       kind: "FunctionDeclaration",
+      visibility,
       name,
       parameters,
       returnType,

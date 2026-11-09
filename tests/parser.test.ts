@@ -19,6 +19,22 @@ function parsedProgram(text: string) {
 }
 
 describe("GEULION parser", () => {
+  it("parses a contextual public modifier without reserving the identifier", () => {
+    const ast = parsedProgram(`공개 함수 계산(값: 정수) -> 정수 { 반환 값 }
+함수 시작() -> 없음 { 변수 공개 = 1; 출력(공개) }`);
+    expect(ast.functions.map(({ visibility }) => visibility)).toEqual(["public", "private"]);
+    expect(ast.functions[1]?.body.statements).toHaveLength(2);
+  });
+
+  it.each(["공개 변수 값 = 1", "공개\n함수 계산() -> 없음 {}"])(
+    "rejects misplaced public modifier %j",
+    (source) => {
+      const result = parseText(source);
+      expect(result.success).toBe(false);
+      expect(result.diagnostics[0]).toMatchObject({ code: "GE1001", phase: "parse" });
+    },
+  );
+
   it("parses P-001 declarations, inferred bindings, calls, and if/else blocks", () => {
     const ast = parsedProgram(`함수 더하기(가: 정수, 나: 정수) -> 정수 {
     반환 가 + 나
