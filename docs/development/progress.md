@@ -2,19 +2,19 @@
 
 ## Current status
 
-- Current Phase: 6 — Standard Library & Language Evolution (v0.3 browser modules and invocation ABI)
-- Current Issue: [#47 — Generate v0.3 browser modules and invocation ABI](https://github.com/dltldn1234/geulion/issues/47)
-- Working branch: `47-feat/v03-browser-modules`
+- Current Phase: 6 — Standard Library & Language Evolution (v0.3 host APIs for Idle)
+- Current Issue: [#49 — Implement v0.3 save-envelope codec and validation](https://github.com/dltldn1234/geulion/issues/49)
+- Working branch: `49-feat/v03-save-envelope`
 - Initial baseline SHA: `afc1b41`
 - Initial main commit count: 58
-- Latest verified main SHA: `de9df5bc305966999609c32cc676f0fe59574df6` (2026-11-09)
-- Current unique commits reachable from `origin/main`: 90
-- New commits reachable from main since baseline: 32
-- Local unmerged Issue #47 commits: 4 atomic commits (runtime/ABI, generator/compiler, CLI, and documentation)
-- Remaining to minimum 300: 210
-- Remaining to primary 400: 310
-- Remaining to extended 500: 410
-- Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed; [#36](https://github.com/dltldn1234/geulion/pull/36), Merge Commit `04a72ba`, CI passed; [#38](https://github.com/dltldn1234/geulion/pull/38), Merge Commit `0eb762f587a9aae70e9fb539513fcbd5959ca2b1`, CI passed; [#40](https://github.com/dltldn1234/geulion/pull/40), Merge Commit `cc62261e93b67b2519e01e9895a77111680101c1`, CI run `42508397430` passed; [#42](https://github.com/dltldn1234/geulion/pull/42), Merge Commit `30f9f5c07d563fd5867e92cdc5924f56b7cd0b7e`, CI run `42534464926` passed; [#44](https://github.com/dltldn1234/geulion/pull/44), Merge Commit `6b30d98f534c0ff8c3acbbdca50086f0fd9ff325`, CI run `42536546327` passed.
+- Latest verified main SHA: `1b0f3f7daa75322516a25ee1c0a87c85d27a4e36` (2026-11-09)
+- Current unique commits reachable from `origin/main`: 95
+- New commits reachable from main since baseline: 37
+- Local unmerged Issue #49 commits: 0 before implementation commits are created
+- Remaining to minimum 300: 205
+- Remaining to primary 400: 305
+- Remaining to extended 500: 405
+- Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed; [#36](https://github.com/dltldn1234/geulion/pull/36), Merge Commit `04a72ba`, CI passed; [#38](https://github.com/dltldn1234/geulion/pull/38), Merge Commit `0eb762f587a9aae70e9fb539513fcbd5959ca2b1`, CI passed; [#40](https://github.com/dltldn1234/geulion/pull/40), Merge Commit `cc62261e93b67b2519e01e9895a77111680101c1`, CI run `42508397430` passed; [#42](https://github.com/dltldn1234/geulion/pull/42), Merge Commit `30f9f5c07d563fd5867e92cdc5924f56b7cd0b7e`, CI run `42534464926` passed; [#44](https://github.com/dltldn1234/geulion/pull/44), Merge Commit `6b30d98f534c0ff8c3acbbdca50086f0fd9ff325`, CI run `42536546327` passed; [#46](https://github.com/dltldn1234/geulion/pull/46), Merge Commit `de9df5bc305966999609c32cc676f0fe59574df6`, CI run `42538207631` passed; [#48](https://github.com/dltldn1234/geulion/pull/48), Merge Commit `1b0f3f7daa75322516a25ee1c0a87c85d27a4e36`, CI run `42540812517` passed.
 
 ## Completed work
 
@@ -24,7 +24,8 @@
 - Issue #39 / PR #40 promoted the implemented v0.2 contract to `docs/language/specification-v0.2.md`, retained v0.1 authority for v0.1 programs, and added P-101/N-009 executable compiler conformance examples.
 - Issue #41 / PR #42 documented a versioned, capability-limited host/application boundary for Idle. Issue #43 / PR #44 finalized the v0.3 browser module, export syntax, invocation ABI, value validation, and save-envelope design.
 - Issue #45 implements contextual `공개 함수` parsing, v0.3 public signature metadata, and the v0.3 `check` selector. PR #46 merged with Merge Commit `de9df5b`; CI run `42538207631` passed.
-- Issue #47 adds browser-target modules, public export metadata and invocation, tagged value validation, browser target selection for `emit-js`/`build`, diagnostics, tests, and documentation; implementation is on the current branch pending PR/CI.
+- Issue #47 adds browser-target modules, public export metadata and invocation, tagged value validation, browser target selection for `emit-js`/`build`, diagnostics, tests, and documentation. PR #48 merged with Merge Commit `1b0f3f7`; CI run `42540812517` passed.
+- Issue #49 adds a platform-neutral v0.3 host API package with bounded save-envelope encode/decode, strict UTF-8 and JSON duplicate-key rejection, value validation, deterministic dictionary encoding, and typed error outcomes; implementation is on the current branch pending PR/CI.
 
 ## Verification
 
@@ -36,19 +37,20 @@
 - Issue #43 normative contract was checked against the current compiler API, generator/source-map model, diagnostics, and v0.1/v0.2 compatibility constraints. PR #44 merged after its CI passed.
 - Issue #45 local verification passed: full `pnpm test` (13 files / 179 tests), `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, and `git diff --check`. PR #46 merged at `de9df5bc305966999609c32cc676f0fe59574df6` after CI run `42538207631` passed.
 - Issue #47 local verification passed: `pnpm typecheck`, `pnpm test` (13 files / 188 tests), `pnpm lint`, `pnpm format:check`, and `git diff --check`. Focused tests passed (3 files / 70 tests); the latest codec conformance tests passed (1 file / 31 tests).
+- Issue #49 local verification passed: `pnpm typecheck`, `pnpm test` (14 files / 200 tests), `pnpm lint`, `pnpm format:check`, and `git diff --check`. Focused host API tests passed (1 file / 12 tests).
 
 ## Known limitations
 
 - The v0.2 increment covers only four pure string queries. Input, clocks, timers, randomness, persistence, filesystem access, browser APIs, FFI, and modules are not implemented.
-- The v0.3 browser module and invocation ABI are implemented on the current unmerged branch. The persistence adapter and Idle UI/runtime integration remain separate work.
+- The v0.3 browser module and invocation ABI are merged. The save-envelope codec is implemented on the current unmerged branch; persistence adapters and Idle UI/runtime integration remain separate work.
 - The Node target remains Node-specific and auto-runs `시작`; only the explicit browser target produces a host-driven module without automatic entrypoint execution.
 
 ## Next
 
-1. Finish Issue #47 review, push the implementation branch, and open its Issue-linked PR; require CI before Merge Commit.
+1. Finish Issue #49 review, push the implementation branch, and open its Issue-linked PR; require CI before Merge Commit.
 2. Implement the v0.3 persistence adapter and conformance coverage in a focused Issue.
 3. Build the Idle host adapter, UI, and game logic against the implemented v0.3 contract.
 
 ## Commit growth tracking
 
-Count unique commits reachable from `origin/main` for the cumulative total. Report local unmerged branch commits separately. Minimum target is 300, primary target is 400, extended target is 500. Never create commits solely to meet a numeric target.
+Count unique commits reachable from `origin/main` for the cumulative total. Report local unmerged branch commits separately. Minimum target is 300, primary target is 400, extended target is 500. Never create commits solely to meet a numeric target. The GitHub CLI credential is currently invalid and the browser session cannot reach repository pages; remote actions must be retried after GitHub connectivity/authentication is restored.
