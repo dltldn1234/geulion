@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --build --force --pretty false && tsc --noEmit --pretty false --project tsconfig.test.json",
-    "test": "pnpm build && vitest run"
+    "test": "pnpm build && vitest run",
+    "test:vscode": "node scripts/run-vscode-tests.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -27,6 +28,7 @@
     "@geulion/parser": "workspace:*",
     "@geulion/semantic": "workspace:*",
     "@types/node": "^24.0.0",
+    "@vscode/test-electron": "2.4.0",
     "eslint": "^10.13.0",
     "prettier": "^3.9.10",
     "typescript": "^6.0.3",

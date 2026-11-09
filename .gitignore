@@ -16,5 +16,6 @@ dist/
 coverage/
 *.tsbuildinfo
 examples/idle/generated/
+/.vscode-test/
 /vscode-user-data/
 /vscode-extensions/
