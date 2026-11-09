@@ -2,3 +2,5 @@ node_modules/
 dist/
 coverage/
 pnpm-lock.yaml
+/vscode-user-data/
+/vscode-extensions/
