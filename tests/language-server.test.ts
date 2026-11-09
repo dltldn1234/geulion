@@ -127,6 +127,75 @@ class LspClient {
 }
 
 describe("GEULION Language Server Protocol", () => {
+  it("searches symbols across open documents and refreshes results after changes and close", async () => {
+    const client = new LspClient();
+    try {
+      const initialized = await client.request("initialize", { capabilities: {} });
+      expect(
+        (initialized.result as { capabilities: Record<string, unknown> }).capabilities
+          .workspaceSymbolProvider,
+      ).toBe(true);
+      client.notification("initialized");
+
+      const firstUri = "file:///workspace/first.geul";
+      const secondUri = "file:///workspace/second.geul";
+      const firstText = "함수 가나다() -> 정수 { 반환 1 }\n함수 시작() -> 없음 { 출력(가나다()) }";
+      const secondText = "함수 나무() -> 정수 { 반환 2 }";
+      client.notificationBatch(
+        {
+          method: "textDocument/didOpen",
+          params: {
+            textDocument: { uri: secondUri, languageId: "geulion", version: 1, text: secondText },
+          },
+        },
+        {
+          method: "textDocument/didOpen",
+          params: {
+            textDocument: { uri: firstUri, languageId: "geulion", version: 1, text: firstText },
+          },
+        },
+      );
+
+      const allSymbols = await client.request("workspace/symbol", { query: "" });
+      const symbols = allSymbols.result as {
+        name: string;
+        kind: number;
+        location: { uri: string; range: { start: { line: number; character: number } } };
+      }[];
+      expect(symbols.map(({ name }) => name)).toEqual(["가나다", "나무", "시작"]);
+      expect(symbols.map(({ kind }) => kind)).toEqual([12, 12, 12]);
+      expect(symbols[0]?.location).toMatchObject({
+        uri: firstUri,
+        range: { start: { line: 0, character: 0 } },
+      });
+      expect(symbols[1]?.location).toMatchObject({
+        uri: secondUri,
+        range: { start: { line: 0, character: 0 } },
+      });
+
+      const matches = await client.request("workspace/symbol", { query: "나무" });
+      expect((matches.result as { name: string }[]).map(({ name }) => name)).toEqual(["나무"]);
+
+      const updatedText = "함수 다리() -> 정수 { 반환 3 }";
+      client.notification("textDocument/didChange", {
+        textDocument: { uri: secondUri, version: 2 },
+        contentChanges: [{ text: updatedText }],
+      });
+      const removed = await client.request("workspace/symbol", { query: "나무" });
+      expect(removed.result).toEqual([]);
+      const updated = await client.request("workspace/symbol", { query: "다리" });
+      expect(updated.result).toMatchObject([
+        { name: "다리", location: { uri: secondUri, range: { start: { line: 0 } } } },
+      ]);
+
+      client.notification("textDocument/didClose", { textDocument: { uri: firstUri } });
+      const afterClose = await client.request("workspace/symbol", { query: "" });
+      expect(afterClose.result).toMatchObject([{ name: "다리", location: { uri: secondUri } }]);
+    } finally {
+      await client.close();
+    }
+  });
+
   it.each([
     ["missing Content-Length", "X-Trace: test\r\n\r\n"],
     ["duplicate Content-Length", "Content-Length: 2\r\ncontent-length: 2\r\n\r\n{}"],

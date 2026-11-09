@@ -2,20 +2,20 @@
 
 ## Current status
 
-- Current Phase: 10 — Language Server protocol stability and malformed-input hardening
-- Current Issue: [#79 — Harden Language Server protocol edge cases](https://github.com/dltldn1234/geulion/issues/79)
-- Working branch: `79-test/language-server-protocol-edge-cases`
+- Current Phase: 10 — Language Server reliability and editor-workflow expansion
+- Current Issue: [#81 — Add workspace symbol search for open GEULION documents](https://github.com/dltldn1234/geulion/issues/81)
+- Working branch: `81-feat/workspace-symbol-search`
 - Initial baseline SHA: `afc1b41`
 - Initial main commit count: 58
-- Latest verified main SHA: `ef7b37b23331d4437281bb0e8746b0b0afe648c0` (2026-11-09)
-- Current unique commits reachable from main: 167
-- New commits reachable from main since baseline: 109
-- Local unmerged Issue #79 commits: 2 (protocol boundary fixes/tests, transport documentation and this progress ledger); PR/CI/merge are pending.
-- Remaining to minimum 300: 133
-- Remaining to primary 400: 233
-- Remaining to extended 500: 333
+- Latest verified main SHA: `c1f868b59948711084588332bec4f7c7f992e5fd` (2026-11-09)
+- Current unique commits reachable from main: 170
+- New commits reachable from main since baseline: 112
+- Local unmerged Issue #81 commits: 2 (workspace symbol implementation/tests and documentation/progress); PR/CI/merge are pending.
+- Remaining to minimum 300: 130
+- Remaining to primary 400: 230
+- Remaining to extended 500: 330
 - Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed; [#36](https://github.com/dltldn1234/geulion/pull/36), Merge Commit `04a72ba`, CI passed; [#38](https://github.com/dltldn1234/geulion/pull/38), Merge Commit `0eb762f587a9aae70e9fb539513fcbd5959ca2b1`, CI passed; [#40](https://github.com/dltldn1234/geulion/pull/40), Merge Commit `cc62261e93b67b2519e01e9895a77111680101c1`, CI run `42508397430` passed; [#42](https://github.com/dltldn1234/geulion/pull/42), Merge Commit `30f9f5c07d563fd5867e92cdc5924f56b7cd0b7e`, CI run `42534464926` passed; [#44](https://github.com/dltldn1234/geulion/pull/44), Merge Commit `6b30d98f534c0ff8c3acbbdca50086f0fd9ff325`, CI run `42536546327` passed; [#46](https://github.com/dltldn1234/geulion/pull/46), Merge Commit `de9df5bc305966999609c32cc676f0fe59574df6`, CI run `42538207631` passed; [#48](https://github.com/dltldn1234/geulion/pull/48), Merge Commit `1b0f3f7daa75322516a25ee1c0a87c85d27a4e36`, CI run `42540812517` passed; [#50](https://github.com/dltldn1234/geulion/pull/50), Merge Commit `852915e29178de5475a072a75e2201fa2dc0a36c`, CI run `42542499311` passed; [#52](https://github.com/dltldn1234/geulion/pull/52), Merge Commit `77ae9fe05bb7b4b711fdc642b90f708506d9eb12`, CI run `42543552208` passed; [#54](https://github.com/dltldn1234/geulion/pull/54), Merge Commit `9d3fa6dbc7daa693dbf3d1f7d6e82d3f84eaaeb1`, CI run `42546017229` passed; [#56](https://github.com/dltldn1234/geulion/pull/56), Merge Commit `a5e7aa1471a875be5bb41ef1518a8de550161700`, CI run `42548068173` passed; [#58](https://github.com/dltldn1234/geulion/pull/58), Merge Commit `e22138a0b86a8c0a5b484f58a4e522411d06fa5f`, CI run `42551438200` passed; [#60](https://github.com/dltldn1234/geulion/pull/60), Merge Commit `393ea42803152555e3b8d28ec0891d8421b8b8fe`, CI run `42552939016` passed; [#62](https://github.com/dltldn1234/geulion/pull/62), Merge Commit `b3a6ef15f54ed274852e801fdb6e50ebfb53c901`, CI run `42554061977` passed; [#64](https://github.com/dltldn1234/geulion/pull/64), Merge Commit `9b36d6e1f99c79ecd7643d4ed9d11b732c7091e5`, CI run `42554755892` passed; [#66](https://github.com/dltldn1234/geulion/pull/66), Merge Commit `a095ddd205034d95249bc03932368e97ad20b3b9`, CI run `42555621830` passed; [#68](https://github.com/dltldn1234/geulion/pull/68), Merge Commit `5ea8d3fa2862ec199173fdae5c7cc85ee1e7e3a3`, CI run `42556270362` passed; [#70](https://github.com/dltldn1234/geulion/pull/70), Merge Commit `55662e2eaab49a63a497207eee91b3b915cb5f21`, CI run `42558581415` passed; [#72](https://github.com/dltldn1234/geulion/pull/72), Merge Commit `99094715bab6327056addeee0cd0f4d482ee7e82`, CI run `42559536742` passed; [#74](https://github.com/dltldn1234/geulion/pull/74), Merge Commit `43702585d2fddb5653b2df584162d7033e834fcf`, CI run `42563653079` passed.; [#76](https://github.com/dltldn1234/geulion/pull/76), Merge Commit `9472b625266222253cf422c24f352ce1e9f41472`, CI passed.
-- Latest merged slice: [PR #78](https://github.com/dltldn1234/geulion/pull/78), Merge Commit `ef7b37b23331d4437281bb0e8746b0b0afe648c0`, CI run `42574309723` passed; Issue #77 closed as completed.
+- Latest merged slice: [PR #80](https://github.com/dltldn1234/geulion/pull/80), Merge Commit `c1f868b59948711084588332bec4f7c7f992e5fd`, CI run `42576077086` passed; Issue #79 closed as completed.
 
 ## Completed work
 
@@ -29,6 +29,7 @@
 - Issue #49 adds a platform-neutral v0.3 host API package with bounded save-envelope encode/decode, strict UTF-8 and JSON duplicate-key rejection, value validation, deterministic dictionary encoding, and typed error outcomes. PR #50 merged with Merge Commit `852915e`; CI run `42542499311` passed.
 - Issue #51 adds an injected byte-storage repository with serialized load/save/transact operations, absent-vs-`none` distinction, typed adapter/storage/codec failures, cache updates only after successful writes, tests, and lifecycle documentation. PR #52 merged with Merge Commit `77ae9fe`; CI run `42543552208` passed.
 - Issue #77 adds a standalone LSP 3.17 server using compiler diagnostics and semantic analysis for completion, signature help, hover, definition, symbols, references, and rename. It supports UTF-8/16/32 positions, versioned changes, queued cancellation, and malformed JSON frame recovery. Local workspace validation passed with 25 files / 245 tests; PR #78 merged with Merge Commit `ef7b37b23331d4437281bb0e8746b0b0afe648c0`, and CI run `42574309723` passed.
+- Issue #79 hardens malformed transport framing, JSON-RPC envelopes, and initialize/shutdown ordering with subprocess regression tests and transport documentation. PR #80 merged with Merge Commit `c1f868b59948711084588332bec4f7c7f992e5fd`; CI run `42576077086` passed and Issue #79 closed as completed.
 
 ## Verification
 
@@ -63,18 +64,19 @@
 - Issue #71 / PR #72 completed compiler-backed definition and document-symbol providers and merged with Merge Commit `99094715bab6327056addeee0cd0f4d482ee7e82`; CI run `42559536742` passed.
 - Issue #73 implements semantic Find All References and Rename in the active document. Focused tests pass (5 tests); workspace tests pass (24 files / 242 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check` pass. PR #74 merged with Merge Commit `43702585`; CI run `42563653079` passed.
 - Issue #75 adds a pinned `@vscode/test-electron` runner and a real Extension Host suite for `onLanguage:geulion` activation, unsaved `.geul` diagnostics, semantic references, rename edits, and editor ranges. Local VS Code 1.145.0 host execution passes; full workspace checks pass (24 files / 242 tests), alongside typecheck, lint, format, and `git diff --check`. PR #76 merged with Merge Commit `9472b625266222253cf422c24f352ce1e9f41472`; its required CI check passed. Issue #75 was subsequently closed as completed.
-- Issue #79 adds subprocess regression coverage for invalid/duplicate/missing Content-Length, header/body limits, truncated EOF, invalid UTF-8 recovery, JSON-RPC envelopes, and initialize/shutdown ordering. It fixes server lifecycle-state defects and documents transport failure policy. Focused tests pass (14 tests), full workspace tests pass (25 files / 256 tests), TypeScript build/test typecheck, ESLint, Prettier, and `git diff --check` pass. The two local commits cover implementation/tests and docs/progress; PR/CI/merge are pending.
+- Issue #79 local verification passed: focused language-server tests (14), full workspace tests (25 files / 256 tests), TypeScript build/test typecheck, ESLint, Prettier, and `git diff --check`. PR #80 remote CI passed and was merged as recorded above.
+- Issue #81 implements compiler-frontend `workspace/symbol` search across open buffers, sorted by symbol name and location, with query filtering and update/close coverage. Focused and full local checks pass; its two commits await PR, CI, and merge.
 
 ## Known limitations
 
 - The v0.2 increment covers only four pure string queries. Input, clocks, timers, randomness, persistence, filesystem access, browser APIs, FFI, and modules are not implemented.
-- Phase 7's playable Idle slice and capped offline-production/save migration are merged. Phase 8 has language basics, CLI commands, diagnostics, completions, signature help, hover, in-file navigation/references/rename, and the merged Issue #77 protocol server. Phase 9's local Playground is merged; its live browser UI still needs a local run where socket binding is available. Issue #75's Extension Host suite has merged. Issue #79 Phase 10 hardening is implemented locally and awaits PR checks and merge.
+- Phase 7's playable Idle slice and capped offline-production/save migration are merged. Phase 8 has language basics, CLI commands, diagnostics, completions, signature help, hover, in-file navigation/references/rename, and the merged Issue #77 protocol server. Phase 9's local Playground is merged; its live browser UI still needs a local run where socket binding is available. Issue #75's Extension Host suite and Issue #79 Phase 10 protocol hardening have merged. Issue #81 adds open-buffer workspace symbol search; closed-file indexing and cross-file resolution remain outside its scope.
 - The Node target remains Node-specific and auto-runs `시작`; only the explicit browser target produces a host-driven module without automatic entrypoint execution.
 
 ## Next
 
-1. Commit and push Issue #79, open its PR, then complete required CI/review/Merge Commit.
-2. Continue substantive Phase 10 stability and optimization Issues; keep the commit-growth ledger based on commits reachable from `main`.
+1. Finish Issue #81 implementation and protocol verification, then open its PR and complete CI/review/Merge Commit.
+2. Continue substantive Phase 10 reliability and editor-workflow Issues; keep the commit-growth ledger based on commits reachable from `main`.
 
 ## Commit growth tracking
 

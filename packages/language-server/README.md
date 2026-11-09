@@ -20,6 +20,7 @@ The package also exposes the `geulion-language-server` executable when installed
 - Full document synchronization, versioned open/change/close notifications, and compiler diagnostics
 - Keyword, built-in, and in-file function completion
 - Built-in signature help, semantic hover, function definition, and document symbols
+- Workspace symbol search across currently open documents, ordered deterministically by symbol name and location
 - Semantic references and rename edits checked by the GEULION compiler before being returned
 - Cancellation for requests still queued for dispatch, stale document version rejection, and malformed JSON frame recovery
 
@@ -27,6 +28,6 @@ Transport input is bounded to 8 KiB of headers and 16 MiB of body data. Each fra
 
 Language version defaults to `0.1`. Clients can select `0.1`, `0.2`, or `0.3` with `initializationOptions.languageVersion`, then update it with `workspace/didChangeConfiguration` using `settings.geulion.languageVersion`.
 
-The server reuses `@geulion/compiler` analysis and diagnostics. Cross-file modules, workspace indexing, and resolving definitions from other documents are not implemented.
+Workspace symbol search parses function declarations in documents currently open in the server session, including syntactically valid modules that do not contain the program entry function. It does not index closed files or resolve cross-file references. The server uses the GEULION compiler frontend parser for symbols and compiler analysis for diagnostics and semantic editor features.
 
 Requests are handled synchronously against the current document snapshot. Since no analysis work continues asynchronously after a request completes, later edits cannot publish an older result; cancellation applies while a request is queued and has not started.
