@@ -1,5 +1,3 @@
-import { TextDecoder, TextEncoder } from "node:util";
-
 export interface SourcePosition {
   readonly byteOffset: number;
   readonly codePointOffset: number;

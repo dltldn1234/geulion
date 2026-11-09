@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { Buffer } from "node:buffer";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -134,6 +135,13 @@ describe("compiler integration and official conformance", () => {
       expect(result.code).toContain("export function createModule(host)");
       expect(result.code).not.toContain('from "node:fs"');
       expect(result.code).not.toMatch(/\b(?:window|document|process)\b/u);
+      const encodedMap = /sourceMappingURL=data:application\/json;base64,([A-Za-z0-9+/=]+)/u.exec(
+        result.code,
+      )?.[1];
+      expect(encodedMap).toBeDefined();
+      expect(JSON.parse(Buffer.from(encodedMap!, "base64").toString("utf8"))).toEqual(
+        result.sourceMap,
+      );
       expect(result.sourceMap).toMatchObject({
         version: 3,
         sources: ["browser.geul"],
