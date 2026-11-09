@@ -24,8 +24,11 @@ Language Server features remain later Phase 8 work. Do not publish this extensio
 
 ## Validation
 
-The repository test suite checks the extension manifest references, lexer keyword coverage, comment/bracket rules, and starter snippets:
+The repository test suite checks the extension manifest references, lexer keyword coverage, comment/bracket rules, and starter snippets. The Extension Host suite launches an isolated VS Code instance and validates activation, unsaved-buffer diagnostics, references, and rename through the real VS Code API:
 
 ```sh
 pnpm test
+pnpm test:vscode
 ```
+
+The host test uses `@vscode/test-electron` with VS Code 1.90.0, the extension's minimum supported version. It downloads that build on first run; set `VSCODE_EXECUTABLE_PATH` to reuse a local VS Code executable. It does not install or publish the extension to the Marketplace. Each run uses temporary user data and extension directories and removes them at exit.

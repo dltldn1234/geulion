@@ -46,5 +46,8 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: VS Code Extension Host integration tests
+        run: xvfb-run -a pnpm test:vscode
+
       - name: Build
         run: pnpm build
