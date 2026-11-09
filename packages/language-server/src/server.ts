@@ -580,6 +580,7 @@ function handleRequest(method: string, params: JsonObject): unknown {
         definitionProvider: true,
         documentHighlightProvider: true,
         documentSymbolProvider: true,
+        foldingRangeProvider: true,
         workspaceSymbolProvider: true,
         referencesProvider: true,
         renameProvider: { prepareProvider: true },
@@ -720,6 +721,24 @@ function handleRequest(method: string, params: JsonObject): unknown {
       range: sourceRange(fn.span, document.text),
       selectionRange: sourceRange(fn.name.span, document.text),
     }));
+  }
+  if (method === "textDocument/foldingRange") {
+    const document = getDocument(params);
+    const analysis = document ? currentAnalysis(document) : undefined;
+    if (!document || !analysis) return [];
+    return analysis.program.ast.functions.flatMap((fn) => {
+      const range = sourceRange(fn.span, document.text);
+      if (range.start.line === range.end.line) return [];
+      return [
+        {
+          startLine: range.start.line,
+          startCharacter: range.start.character,
+          endLine: range.end.line,
+          endCharacter: range.end.character,
+          kind: "region",
+        },
+      ];
+    });
   }
   if (method === "workspace/symbol") {
     const query = getString(params, "query") ?? "";

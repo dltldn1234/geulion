@@ -23,7 +23,7 @@ The package also exposes the `geulion-language-server` executable when installed
 - UTF-8, UTF-16, and UTF-32 positions negotiated from the client's LSP capabilities; UTF-16 is the default when no encoding list is provided
 - Full document synchronization, versioned open/change/close notifications, and compiler diagnostics
 - Keyword, built-in, and in-file function completion
-- Built-in signature help, semantic hover, function definition, semantic document highlights, and document symbols
+- Built-in signature help, semantic hover, function definition, semantic document highlights, document symbols, and function folding ranges
 - Workspace symbol search across `.geul` files under the negotiated workspace folders (or `rootUri`), with open buffers taking precedence
 - Semantic references and rename edits checked by the GEULION compiler before being returned
 - Cancellation for requests still queued for dispatch, stale document version rejection, and malformed JSON frame recovery
