@@ -10,10 +10,14 @@ interface LanguageContribution {
   icon: { light: string; dark: string };
 }
 interface Manifest {
+  main: string;
+  activationEvents: string[];
   contributes: {
     languages: LanguageContribution[];
     grammars: { language: string; scopeName: string; path: string }[];
     snippets: { language: string; path: string }[];
+    commands: { command: string; title: string }[];
+    configuration: { properties: Record<string, { default?: unknown; enum?: string[] }> };
   };
 }
 interface GrammarRule {
@@ -53,6 +57,9 @@ describe("GEULION VS Code language package", () => {
   it("registers .geul and points to packaged language resources", () => {
     const contributions = manifest.contributes;
     const language = contributions.languages[0]!;
+    expect(manifest.main).toBe("./extension.js");
+    expect(manifest.activationEvents).toContain("onLanguage:geulion");
+    expect(manifest.activationEvents).toContain("onCommand:geulion.checkCurrentFile");
     expect(language.id).toBe("geulion");
     expect(language.extensions).toContain(".geul");
     expect(language.configuration).toBe("./language-configuration.json");
@@ -67,6 +74,7 @@ describe("GEULION VS Code language package", () => {
 
     for (const path of [
       language.configuration,
+      manifest.main,
       language.icon.light,
       language.icon.dark,
       ...contributions.grammars.map((item) => item.path),
@@ -74,6 +82,21 @@ describe("GEULION VS Code language package", () => {
     ]) {
       expect(existsSync(join(extensionRoot, path))).toBe(true);
     }
+  });
+
+  it("declares CLI commands and supported language version settings", () => {
+    expect(manifest.contributes.commands.map((command) => command.command)).toEqual([
+      "geulion.checkCurrentFile",
+      "geulion.runCurrentFile",
+    ]);
+    expect(manifest.contributes.configuration.properties["geulion.executable"]?.default).toBe(
+      "geulion",
+    );
+    expect(manifest.contributes.configuration.properties["geulion.languageVersion"]?.enum).toEqual([
+      "0.1",
+      "0.2",
+      "0.3",
+    ]);
   });
 
   it("covers the lexer keywords, literals, operators, and comment forms", () => {
