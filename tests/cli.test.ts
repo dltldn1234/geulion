@@ -123,30 +123,34 @@ describe("GEULION CLI", () => {
   });
 
   it("prints structured check diagnostics with source ranges and stable JSON errors", () => {
-    withSource(new TextEncoder().encode("함수 시작() -> 없음 {\n  출력(없는값)\n}"), (path) => {
-      const result = runCli("check", path, "--format", "json", "--language-version", "0.1");
-      const output = JSON.parse(result.stdout) as {
-        version: number;
-        success: boolean;
-        diagnostics: {
-          code: string;
-          path: string | null;
-          range: { start: { line: number; column: number; utf16Offset: number } } | null;
-        }[];
-        suppressedCount: number;
-      };
-      expect(result.status).toBe(1);
-      expect(result.stderr).toBe("");
-      expect(output.version).toBe(1);
-      expect(output.success).toBe(false);
-      expect(output.suppressedCount).toBe(0);
-      expect(output.diagnostics[0]).toMatchObject({
-        code: "GE2001",
-        path,
-        range: { start: { line: 2, column: 6 } },
-      });
-      expect(output.diagnostics[0]?.range?.start.utf16Offset).toBeGreaterThan(0);
-    });
+    withSource(
+      new TextEncoder().encode("함수 시작() -> 없음 {\n  출력(없는값)\n  출력(다른값)\n}"),
+      (path) => {
+        const result = runCli("check", path, "--format", "json", "--language-version", "0.1");
+        const output = JSON.parse(result.stdout) as {
+          version: number;
+          success: boolean;
+          diagnostics: {
+            code: string;
+            path: string | null;
+            range: { start: { line: number; column: number; utf16Offset: number } } | null;
+          }[];
+          suppressedCount: number;
+        };
+        expect(result.status).toBe(1);
+        expect(result.stderr).toBe("");
+        expect(output.version).toBe(1);
+        expect(output.success).toBe(false);
+        expect(output.diagnostics).toHaveLength(2);
+        expect(output.suppressedCount).toBe(0);
+        expect(output.diagnostics[0]).toMatchObject({
+          code: "GE2001",
+          path,
+          range: { start: { line: 2, column: 6 } },
+        });
+        expect(output.diagnostics[0]?.range?.start.utf16Offset).toBeGreaterThan(0);
+      },
+    );
 
     const missing = runCli(
       "check",
