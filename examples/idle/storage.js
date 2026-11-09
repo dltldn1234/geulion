@@ -2,9 +2,17 @@
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder("utf-8", { fatal: true });
 
-export function createLocalStorageRepository(storageAdapter, key, applicationVersion) {
+export function createLocalStorageRepository(
+  storageAdapter,
+  key,
+  applicationVersion,
+  migrations = {},
+) {
   if (!/^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$/u.test(applicationVersion)) {
     throw new TypeError("invalid application version");
+  }
+  if (typeof migrations !== "object" || migrations === null || Array.isArray(migrations)) {
+    throw new TypeError("invalid migrations");
   }
   let value = null;
   let loaded = false;
@@ -36,15 +44,51 @@ export function createLocalStorageRepository(storageAdapter, key, applicationVer
       return { kind: "codec-error" };
     }
     if (
+      !exactKeys(envelope, [
+        "format",
+        "envelopeVersion",
+        "languageVersion",
+        "applicationVersion",
+        "value",
+      ]) ||
       envelope?.format !== "geulion-save" ||
       envelope.envelopeVersion !== 1 ||
       envelope.languageVersion !== "0.3" ||
-      envelope.applicationVersion !== applicationVersion ||
+      typeof envelope.applicationVersion !== "string" ||
+      !/^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$/u.test(envelope.applicationVersion) ||
       !isGeulionValue(envelope.value)
     )
       return { kind: "codec-error" };
     if (textEncoder.encode(JSON.stringify(envelope)).length > 1_048_576)
       return { kind: "codec-error" };
+    if (envelope.applicationVersion !== applicationVersion) {
+      if (!Object.hasOwn(migrations, envelope.applicationVersion)) return { kind: "codec-error" };
+      let migrated;
+      try {
+        migrated = migrations[envelope.applicationVersion](structuredClone(envelope.value));
+      } catch {
+        return { kind: "codec-error" };
+      }
+      if (!isGeulionValue(migrated)) return { kind: "codec-error" };
+      const upgraded = {
+        format: "geulion-save",
+        envelopeVersion: 1,
+        languageVersion: "0.3",
+        applicationVersion,
+        value: migrated,
+      };
+      let bytes;
+      try {
+        bytes = textEncoder.encode(JSON.stringify(upgraded));
+        if (bytes.length > 1_048_576) return { kind: "codec-error" };
+        await storageAdapter.write(key, bytes);
+      } catch {
+        return { kind: "storage-error" };
+      }
+      value = structuredClone(migrated);
+      loaded = true;
+      return { kind: "loaded", value: structuredClone(value), migrated: true };
+    }
     value = structuredClone(envelope.value);
     loaded = true;
     return { kind: "loaded", value: structuredClone(value) };
@@ -195,4 +239,10 @@ function hasLoneSurrogate(value) {
     } else if (code >= 0xdc00 && code <= 0xdfff) return true;
   }
   return false;
+}
+
+function exactKeys(value, expected) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const keys = Object.keys(value);
+  return keys.length === expected.length && expected.every((key) => keys.includes(key));
 }

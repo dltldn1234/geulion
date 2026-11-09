@@ -262,6 +262,21 @@ body {
   font: 10px var(--mono);
   font-weight: 400;
 }
+.offline-result {
+  margin-top: 12px;
+  padding: 9px 11px;
+  border: 1px solid #59673a;
+  border-radius: 7px;
+  background: #22291b;
+  color: var(--lime);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.offline-result.error {
+  border-color: #754c43;
+  background: #2a1d1a;
+  color: #f0a090;
+}
 .side-stats {
   display: grid;
   gap: 8px;
