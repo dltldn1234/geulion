@@ -1,6 +1,6 @@
 # GEULION v0.3 Browser Module and Host API Specification
 
-**Status: Normative contract.** This document specifies the source export marker, browser compilation target, invocation ABI, value transport, and save-envelope validation. Issues #45 and #47 implement public declarations, browser module generation, invocation validation, and browser CLI targets. Issue #49 adds a platform-neutral package that encodes and decodes the save envelope; storage access and atomic persistence remain host-owned. The existing v0.1 and v0.2 contracts remain unchanged.
+**Status: Normative contract.** This document specifies the source export marker, browser compilation target, invocation ABI, value transport, and save-envelope validation. Issues #45 and #47 implement public declarations, browser module generation, invocation validation, and browser CLI targets. Issue #49 adds a platform-neutral package that encodes and decodes the save envelope. Issue #51 adds a platform-neutral repository adapter over an injected byte-storage capability; the embedding application still owns the backend and its atomicity guarantees. The existing v0.1 and v0.2 contracts remain unchanged.
 
 ## 1. Version and target selection
 
@@ -243,6 +243,31 @@ interface SaveEnvelopeV1 {
 - A failed save operation leaves the application's prior persisted value intact when the host storage supports atomic replacement. The application keeps its last in-memory state and surfaces the storage failure separately from GEULION diagnostics.
 - Save parsing and migration happen in the adapter before invoking GEULION. The same envelope rules apply in browser and Node adapters.
 
+The `@geulion/host-api` package exports `createSaveRepository(storage, key, applicationVersion)`. It serializes `load`, `save`, and `transact` operations for one repository instance. `load` distinguishes an absent key from a stored `none`; malformed or incompatible bytes return `codec-error` and are left untouched. Storage exceptions return `storage-error`. Invalid adapter arguments return `adapter-error`, while an invalid application version returns the codec's `invalid-application-version`. `transact` lazily loads the current value, passes an isolated snapshot (or `null` when absent) to the updater, and updates its in-memory snapshot only after the backend write resolves successfully. It does not migrate old saves or provide cross-instance locking.
+
+An embedding application supplies its own storage implementation and checks each result:
+
+```ts
+const saves = createSaveRepository(storage, "idle-save", "1.0.0");
+const loaded = await saves.load();
+if (
+  loaded.kind === "codec-error" ||
+  loaded.kind === "storage-error" ||
+  loaded.kind === "adapter-error"
+) {
+  // Keep the existing bytes; let the application report or recover explicitly.
+} else if (loaded.kind === "absent") {
+  // Start a new game without conflating it with a stored GEULION `none`.
+} else {
+  const next = await saves.transact((current) => updateGame(current));
+  if (next.kind !== "saved") {
+    // Keep the last in-memory state and surface the failure to the application.
+  }
+}
+```
+
+The repository can report success only after `storage.write` resolves. If a backend mutates data and then rejects, rollback is backend-specific; hosts that need prior persisted bytes preserved on failure must implement atomic replacement. Multiple repository instances sharing one key also require backend-level coordination.
+
 The existing Node `run` command and Node build remain process-entry execution for v0.1/v0.2. They do not expose `createModule`. A future programmatic Node adapter for v0.3 must implement the same `createModule` ABI, input/result validation, and observable invocation behavior as the browser adapter; it may provide platform-specific persistence, but persistence still follows this envelope contract. This specification does not require the current Node CLI runtime to add v0.3 support.
 
 ## 6. Conformance requirements
@@ -258,4 +283,4 @@ Before an implementation is declared conforming, executable cases must cover:
 - valid, absent, malformed, oversized, unsupported-version, incompatible-application-version, and explicitly migrated save envelopes;
 - browser and programmatic Node v0.3 host adapters produce identical values and GEULION diagnostics for the same public invocation sequence.
 
-The browser module, invocation ABI, and save-envelope codec are implemented and covered by repository tests. This codec validates and serializes bytes only: it does not access storage, perform atomic writes, migrate versions, or provide a programmatic Node/browser storage adapter. The full conformance list above still includes adapter parity and runtime checks outside this package.
+The browser module, invocation ABI, save-envelope codec, and injected-storage repository adapter are implemented and covered by repository tests. The adapter does not select a storage backend, guarantee rollback/atomicity, coordinate separate repository instances, migrate versions, or integrate with an Idle UI. The full conformance list above still includes adapter parity and runtime checks outside this package.
