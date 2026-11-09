@@ -107,7 +107,160 @@ function activate(context, vscodeApi, spawnProcess = spawn) {
 
   registerCommand("geulion.checkCurrentFile", "check");
   registerCommand("geulion.runCurrentFile", "run");
+
+  if (vscode.languages && vscode.workspace.onDidChangeTextDocument) {
+    registerEditorDiagnostics(context, vscode, output, spawnProcess);
+  }
   return { output };
+}
+
+function registerEditorDiagnostics(context, vscode, output, spawnProcess) {
+  const collection = vscode.languages.createDiagnosticCollection("geulion");
+  context.subscriptions.push(collection);
+  const pending = new Map();
+  const isGeulionDocument = (document) =>
+    document.languageId === "geulion" &&
+    path.extname(document.uri.fsPath).toLowerCase() === ".geul";
+
+  const clearPending = (key, state) => {
+    if (state.timer) globalThis.clearTimeout(state.timer);
+    state.child?.kill();
+    pending.delete(key);
+  };
+
+  const schedule = (document) => {
+    if (!isGeulionDocument(document)) return;
+    const key = document.uri.toString();
+    const previous = pending.get(key);
+    const generation = (previous?.generation ?? 0) + 1;
+    if (previous?.timer) globalThis.clearTimeout(previous.timer);
+    previous?.child?.kill();
+    collection.set(document.uri, []);
+    const state = { generation, timer: undefined, child: undefined };
+    pending.set(key, state);
+    state.timer = globalThis.setTimeout(() => {
+      state.timer = undefined;
+      const configuration = vscode.workspace.getConfiguration("geulion", document.uri);
+      const executable = configuration.get("executable", "geulion");
+      const prefixArguments = configuration.get("arguments", []);
+      const languageVersion = configuration.get("languageVersion", "0.1");
+      if (
+        typeof executable !== "string" ||
+        executable.trim() === "" ||
+        !Array.isArray(prefixArguments) ||
+        !prefixArguments.every((argument) => typeof argument === "string") ||
+        typeof languageVersion !== "string" ||
+        !LANGUAGE_VERSIONS.has(languageVersion)
+      ) {
+        collection.set(document.uri, []);
+        output.appendLine("GEULION 편집기 진단 설정이 올바르지 않습니다.");
+        return;
+      }
+      const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+      const cwd = workspaceFolder?.uri.fsPath ?? path.dirname(document.uri.fsPath);
+      let child;
+      try {
+        child = spawnProcess(
+          executable,
+          [
+            ...prefixArguments,
+            "check",
+            "-",
+            "--format",
+            "json",
+            "--language-version",
+            languageVersion,
+          ],
+          { cwd, shell: false, windowsHide: true },
+        );
+      } catch (error) {
+        collection.set(document.uri, []);
+        output.appendLine(`GEULION 편집기 검사를 시작하지 못했습니다: ${errorMessage(error)}`);
+        return;
+      }
+      state.child = child;
+      let stdout = "";
+      let stderr = "";
+      let spawnFailed = false;
+      child.stdout?.on("data", (chunk) => (stdout += String(chunk)));
+      child.stderr?.on("data", (chunk) => (stderr += String(chunk)));
+      child.once("error", (error) => {
+        if (pending.get(key) !== state) return;
+        spawnFailed = true;
+        collection.set(document.uri, []);
+        output.appendLine(`GEULION 편집기 검사를 시작하지 못했습니다: ${errorMessage(error)}`);
+        state.child = undefined;
+      });
+      child.once("close", (code) => {
+        if (pending.get(key) !== state || document.version !== state.documentVersion || spawnFailed)
+          return;
+        state.child = undefined;
+        pending.delete(key);
+        if (code !== 0 && code !== 1) {
+          collection.set(document.uri, []);
+          output.appendLine(stderr || "GEULION 편집기 검사가 실패했습니다.");
+          return;
+        }
+        try {
+          const result = JSON.parse(stdout);
+          if (
+            result.version !== 1 ||
+            !Array.isArray(result.diagnostics) ||
+            typeof result.success !== "boolean"
+          ) {
+            throw new Error("지원하지 않는 진단 응답 형식입니다.");
+          }
+          const diagnostics = result.diagnostics.flatMap((item) => {
+            const range = new vscode.Range(
+              new vscode.Position(
+                (item.range?.start?.line ?? 1) - 1,
+                (item.range?.start?.column ?? 1) - 1,
+              ),
+              new vscode.Position(
+                (item.range?.end?.line ?? 1) - 1,
+                (item.range?.end?.column ?? 1) - 1,
+              ),
+            );
+            const diagnostic = new vscode.Diagnostic(
+              range,
+              item.message,
+              vscode.DiagnosticSeverity.Error,
+            );
+            diagnostic.code = item.code;
+            diagnostic.source = "GEULION";
+            if (item.help) diagnostic.message = `${item.message}\n${item.help}`;
+            return [diagnostic];
+          });
+          collection.set(document.uri, diagnostics);
+        } catch (error) {
+          collection.set(document.uri, []);
+          output.appendLine(`GEULION 진단 응답을 읽지 못했습니다: ${errorMessage(error)}`);
+        }
+      });
+      state.documentVersion = document.version;
+      child.stdin?.end(document.getText());
+    }, 300);
+  };
+
+  const changed = vscode.workspace.onDidChangeTextDocument((event) => schedule(event.document));
+  const opened = vscode.workspace.onDidOpenTextDocument(schedule);
+  const closed = vscode.workspace.onDidCloseTextDocument((document) => {
+    const key = document.uri.toString();
+    const state = pending.get(key);
+    if (state) clearPending(key, state);
+    collection.delete(document.uri);
+  });
+  const configurationChanged = vscode.workspace.onDidChangeConfiguration((event) => {
+    if (event.affectsConfiguration("geulion")) {
+      for (const document of vscode.workspace.textDocuments) schedule(document);
+    }
+  });
+  context.subscriptions.push(changed, opened, closed, configurationChanged, {
+    dispose() {
+      for (const [key, state] of pending) clearPending(key, state);
+    },
+  });
+  for (const document of vscode.workspace.textDocuments) schedule(document);
 }
 
 function errorMessage(error) {
