@@ -4,7 +4,7 @@ GEULION(글리온)은 한국어 사용자가 읽고 작성할 수 있는 정적 
 
 ## 상태
 
-Language Specification v0.1과 v0.2는 각각 별도 문서를 규범 진입점으로 사용합니다. v0.1은 해당 버전에서 선택한 프로그램에 계속 적용되며, v0.2는 v0.2 프로그램의 문자열 표준 함수 계약을 정의합니다. v0.3은 브라우저 모듈과 호스트 API 설계 계약을 정의합니다. 현재 `공개 함수`의 AST 및 semantic export metadata와 v0.3 `check` 선택을 구현하고 있으며, 브라우저 코드 생성·호출 ABI·저장 adapter는 아직 구현되지 않았습니다. 명세 문서의 상태와 구현 상태는 별도로 관리합니다.
+Language Specification v0.1과 v0.2는 각각 별도 문서를 규범 진입점으로 사용합니다. v0.1은 해당 버전에서 선택한 프로그램에 계속 적용되며, v0.2는 v0.2 프로그램의 문자열 표준 함수 계약을 정의합니다. v0.3은 브라우저 모듈과 호스트 API 규칙을 정의합니다. `공개 함수`, browser `createModule` 생성과 tagged-value 호출, `emit-js`/`build`의 browser 대상은 구현됐습니다. 저장 envelope는 adapter가 준수할 규칙이며 GEULION persistence 구현은 별도입니다. 명세 문서의 상태와 구현 상태는 별도로 관리합니다.
 
 문서의 기능 상태는 다음 뜻으로 사용합니다.
 
@@ -19,7 +19,7 @@ Language Specification v0.1과 v0.2는 각각 별도 문서를 규범 진입점�
 
 - `specification-v0.1.md` — 버전별 규범 명세, 문서 우선순위, Lexer/Parser 경계
 - `specification-v0.2.md` — v0.2 문자열 표준 함수의 규범 명세
-- `specification-v0.3-host-api.md` — v0.3 브라우저 모듈, 공개 함수, 호출 ABI 및 save-envelope 규범 설계 계약 (**Specified**, 구현 전)
+- `specification-v0.3-host-api.md` — v0.3 브라우저 모듈, 공개 함수, 호출 ABI 및 save-envelope 규범 계약 (**Specified**, persistence adapter 후속)
 - `host-api-v0.3-proposal.md` — v0.3 설계 배경 및 대안 (**Superseded**, 규범 규칙은 위 명세 참조)
 - `design-decisions.md` — 설계 원칙과 결정 근거
 - `lexical-structure.md` — 문자, 식별자, 리터럴, 주석, 토큰과 위치 규칙

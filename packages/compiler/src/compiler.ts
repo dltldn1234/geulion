@@ -57,34 +57,62 @@ export type CompilationResult =
     } & ReturnType<typeof generateJavaScript>)
   | CompilationFailure;
 
-export function compileSource(
-  input: SourceInput & {
-    readonly target?: "node";
-    readonly languageVersion?: "0.1" | "0.2";
-  },
-): CompilationResult {
+export type NodeCompileInput = SourceInput & {
+  readonly target?: "node";
+  readonly languageVersion?: "0.1" | "0.2";
+};
+
+export type BrowserCompileInput = SourceInput & {
+  readonly target: "browser";
+  readonly languageVersion: "0.3";
+};
+
+export type CompileInput = NodeCompileInput | BrowserCompileInput;
+
+function compilationDiagnostic(
+  code: "GE2004" | "GE2005",
+  path: string,
+  message: string,
+  help: string,
+): CompilationFailure {
+  return {
+    success: false,
+    suppressedCount: 0,
+    diagnostics: [createDiagnostic({ code, phase: "resolve", message, path, range: null, help })],
+  };
+}
+
+export function compileSource(input: CompileInput): CompilationResult {
   try {
-    const requestedVersion = input.languageVersion as LanguageVersion | undefined;
-    if (requestedVersion === "0.3") {
-      return {
-        success: false,
-        suppressedCount: 0,
-        diagnostics: [
-          createDiagnostic({
-            code: "GE2004",
-            phase: "resolve",
-            message: "v0.3은 현재 Node 대상 컴파일을 지원하지 않습니다.",
-            path: input.path,
-            range: null,
-            help: "`--language-version 0.1` 또는 `0.2`를 선택하거나 브라우저 대상 구현을 기다리세요.",
-          }),
-        ],
-      };
-    }
+    const runtimeInput = input as SourceInput & { readonly target?: unknown };
+    const target = runtimeInput.target ?? "node";
+    const languageVersion = input.languageVersion ?? "0.1";
+    if (
+      (languageVersion !== "0.1" && languageVersion !== "0.2" && languageVersion !== "0.3") ||
+      (target !== "node" && target !== "browser") ||
+      (target === "node" && languageVersion === "0.3") ||
+      (target === "browser" && languageVersion !== "0.3")
+    )
+      return compilationDiagnostic(
+        "GE2004",
+        input.path,
+        "지원하지 않는 언어 버전과 컴파일 대상 조합입니다.",
+        "Node 대상에는 v0.1 또는 v0.2를, 브라우저 대상에는 v0.3을 선택하세요.",
+      );
     const checked = checkSource(input);
     if (!checked.success) return checked;
+    if (target === "browser" && checked.program.exports.length === 0)
+      return compilationDiagnostic(
+        "GE2005",
+        input.path,
+        "브라우저 모듈에는 공개 함수가 하나 이상 필요합니다.",
+        "`공개 함수` 선언을 하나 이상 추가하세요.",
+      );
     const sourceText = SourceFile.fromBytes(input.path, input.source).text;
-    const generated = generateJavaScript(checked.program, { sourceText });
+    const generated = generateJavaScript(checked.program, {
+      sourceText,
+      ...(target === "browser" ? { target: "browser" as const } : {}),
+    });
     return { success: true, ...generated, diagnostics: [], suppressedCount: 0 };
   } catch {
     return internalFailure();
