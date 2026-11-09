@@ -10,7 +10,7 @@
 - Latest verified main SHA: `bfb4effefb1fac3181b21d0f897028eac74e9d3a` (2026-11-09)
 - Current unique commits reachable from main: 173
 - New commits reachable from baseline `afc1b41`: 115
-- Local unmerged Issue #83 commits: 0 at work start; implementation is in progress and has not yet been committed.
+- Local unmerged Issue #83 commits: 3 (coverage tooling/docs, protocol regressions, and progress ledger); PR/CI/merge are pending.
 - Remaining to minimum 300: 127
 - Remaining to primary 400: 227
 - Remaining to extended 500: 327
