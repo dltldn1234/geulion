@@ -263,6 +263,9 @@ importers:
       '@geulion/compiler':
         specifier: workspace:*
         version: link:../compiler
+      '@geulion/lexer':
+        specifier: workspace:*
+        version: link:../lexer
 
   packages/lexer:
     dependencies:

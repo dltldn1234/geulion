@@ -16,6 +16,7 @@
   ],
   "dependencies": {
     "@geulion/ast": "workspace:*",
-    "@geulion/compiler": "workspace:*"
+    "@geulion/compiler": "workspace:*",
+    "@geulion/lexer": "workspace:*"
   }
 }
