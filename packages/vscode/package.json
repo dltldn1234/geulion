@@ -1,0 +1,45 @@
+{
+  "name": "geulion-language-support",
+  "displayName": "GEULION Language Support",
+  "description": "Korean language basics for GEULION source files.",
+  "version": "0.1.0",
+  "publisher": "dltldn1234",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "geulion",
+        "aliases": [
+          "GEULION",
+          "geulion"
+        ],
+        "extensions": [
+          ".geul"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./media/geulion-light.svg",
+          "dark": "./media/geulion-dark.svg"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "geulion",
+        "scopeName": "source.geulion",
+        "path": "./syntaxes/geulion.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "geulion",
+        "path": "./snippets/geulion.code-snippets"
+      }
+    ]
+  }
+}
