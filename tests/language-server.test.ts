@@ -1055,7 +1055,7 @@ describe("GEULION Language Server Protocol", () => {
         expect(capabilities.positionEncoding).toBe(encoding);
         expect(capabilities.semanticTokensProvider).toEqual({
           legend: { tokenTypes: tokenTypeNames, tokenModifiers: [] },
-          full: true,
+          full: { delta: true },
         });
         client.notification("initialized");
         client.notification("textDocument/didOpen", {
@@ -1065,7 +1065,9 @@ describe("GEULION Language Server Protocol", () => {
         const response = await client.request("textDocument/semanticTokens/full", {
           textDocument: { uri },
         });
-        const data = (response.result as { data: number[] }).data;
+        const initial = response.result as { resultId: string; data: number[] };
+        const data = initial.data;
+        expect(initial.resultId).toEqual(expect.any(String));
         expect(data.length % 5).toBe(0);
         const decoded: { line: number; character: number; text: string; type: string }[] = [];
         let line = 0;
@@ -1124,19 +1126,112 @@ describe("GEULION Language Server Protocol", () => {
           ]),
         );
 
+        const unchangedDelta = await client.request("textDocument/semanticTokens/full/delta", {
+          textDocument: { uri },
+          previousResultId: initial.resultId,
+        });
+        expect(unchangedDelta.result).toMatchObject({ edits: [] });
+
         client.notification("textDocument/didChange", {
           textDocument: { uri, version: 2 },
           contentChanges: [{ text: "함수 시작() -> 없음 { 출력(7) }" }],
         });
-        const changed = await client.request("textDocument/semanticTokens/full", {
+        const changed = await client.request("textDocument/semanticTokens/full/delta", {
+          textDocument: { uri },
+          previousResultId: initial.resultId,
+        });
+        const changedResult = changed.result as {
+          resultId: string;
+          edits: { start: number; deleteCount: number; data?: number[] }[];
+        };
+        expect(changedResult.resultId).toEqual(expect.any(String));
+        expect(changedResult.edits).toHaveLength(1);
+        const reconstructed = [...data];
+        for (const edit of [...changedResult.edits].reverse())
+          reconstructed.splice(edit.start, edit.deleteCount, ...(edit.data ?? []));
+        const current = await client.request("textDocument/semanticTokens/full", {
           textDocument: { uri },
         });
-        expect((changed.result as { data: number[] }).data).not.toEqual(data);
+        const currentResult = current.result as { resultId: string; data: number[] };
+        const currentData = currentResult.data;
+        expect(currentData).not.toEqual(data);
+        expect(reconstructed).toEqual(currentData);
+
+        client.notification("textDocument/didChange", {
+          textDocument: { uri, version: 3 },
+          contentChanges: [{ text: "함수 시작() -> 없음 { 출력(7) }\n// appended" }],
+        });
+        const insertion = await client.request("textDocument/semanticTokens/full/delta", {
+          textDocument: { uri },
+          previousResultId: currentResult.resultId,
+        });
+        const insertionResult = insertion.result as {
+          resultId: string;
+          edits: { start: number; deleteCount: number; data?: number[] }[];
+        };
+        expect(insertionResult.edits).toHaveLength(1);
+        expect(insertionResult.edits[0]?.deleteCount).toBe(0);
+        expect(insertionResult.edits[0]?.data?.length).toBeGreaterThan(0);
+
+        client.notification("textDocument/didChange", {
+          textDocument: { uri, version: 4 },
+          contentChanges: [{ text: "함수 시작() -> 없음 { 출력(7) }" }],
+        });
+        const deletion = await client.request("textDocument/semanticTokens/full/delta", {
+          textDocument: { uri },
+          previousResultId: insertionResult.resultId,
+        });
+        const deletionResult = deletion.result as {
+          edits: { start: number; deleteCount: number; data?: number[] }[];
+        };
+        expect(deletionResult.edits).toHaveLength(1);
+        expect(deletionResult.edits[0]?.deleteCount).toBeGreaterThan(0);
+        expect(deletionResult.edits[0]?.data).toEqual([]);
+
+        const unknownId = await client.request("textDocument/semanticTokens/full/delta", {
+          textDocument: { uri },
+          previousResultId: "expired-result-id",
+        });
+        expect(unknownId.result).toMatchObject({ data: currentData });
+        expect(unknownId.result).not.toHaveProperty("edits");
+
+        const otherUri = `${uri}-other`;
+        client.notification("textDocument/didOpen", {
+          textDocument: {
+            uri: otherUri,
+            languageId: "geulion",
+            version: 1,
+            text: "함수 보조() -> 없음 { 출력(1) }",
+          },
+        });
+        const otherDocumentDelta = await client.request("textDocument/semanticTokens/full/delta", {
+          textDocument: { uri: otherUri },
+          previousResultId: initial.resultId,
+        });
+        expect(otherDocumentDelta.result).toHaveProperty("data");
+        expect(otherDocumentDelta.result).not.toHaveProperty("edits");
+        client.notification("textDocument/didClose", { textDocument: { uri: otherUri } });
+
+        for (let index = 0; index < 6; index += 1)
+          await client.request("textDocument/semanticTokens/full", { textDocument: { uri } });
+        const evictedId = await client.request("textDocument/semanticTokens/full/delta", {
+          textDocument: { uri },
+          previousResultId: initial.resultId,
+        });
+        expect(evictedId.result).toMatchObject({ data: currentData });
+        expect(evictedId.result).not.toHaveProperty("edits");
+
         client.notification("textDocument/didClose", { textDocument: { uri } });
         const closed = await client.request("textDocument/semanticTokens/full", {
           textDocument: { uri },
         });
-        expect(closed.result).toEqual({ data: [] });
+        expect(closed.result).toMatchObject({ data: [] });
+        const closedDelta = await client.request("textDocument/semanticTokens/full/delta", {
+          textDocument: { uri },
+          previousResultId: currentResult.resultId,
+        });
+        expect(closedDelta.result).toMatchObject({ data: [] });
+        expect(closedDelta.result).not.toHaveProperty("edits");
       } finally {
         await client.close();
       }
