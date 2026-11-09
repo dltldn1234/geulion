@@ -641,6 +641,36 @@ describe("GEULION Language Server Protocol", () => {
     }
   });
 
+  it("suppresses keyword hover inside strings, including after escaped quotes", async () => {
+    const client = new LspClient();
+    const uri = "file:///workspace/string-hover.geul";
+    const source = String.raw`함수 시작() -> 없음 { 출력("함수 \"함수\"") }`;
+    try {
+      await openEditorDocument(client, {
+        languageVersion: "0.3",
+        snippetSupport: false,
+        uri,
+        text: source,
+      });
+
+      const codeHover = await client.request("textDocument/hover", {
+        textDocument: { uri },
+        position: { line: 0, character: 1 },
+      });
+      expect(JSON.stringify(codeHover.result)).toContain("매개변수와 반환 타입");
+
+      for (const character of ["함수 ".length, String.raw`함수 \"`.length + "함수".length]) {
+        const stringHover = await client.request("textDocument/hover", {
+          textDocument: { uri },
+          position: { line: 0, character: source.indexOf('"') + 1 + character },
+        });
+        expect(stringHover.result).toBeNull();
+      }
+    } finally {
+      await client.close();
+    }
+  });
+
   it("re-publishes diagnostics when a supported language version is selected", async () => {
     const client = new LspClient();
     try {
