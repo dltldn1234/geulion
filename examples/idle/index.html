@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#10120f" />
+    <title>GEULION Idle</title>
+    <link rel="stylesheet" href="./style.css" />
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="GEULION Idle 홈"
+          ><span class="brand-mark">G</span><span>GEULION <b>IDLE</b></span></a
+        >
+        <div class="header-actions">
+          <span class="save-state" id="save-state"><i></i> 저장 대기</span
+          ><button class="icon-button" id="reset" aria-label="게임 초기화" title="게임 초기화">
+            ↻
+          </button>
+        </div>
+      </header>
+      <section class="intro">
+        <div>
+          <span class="eyebrow">A QUIET LITTLE UNIVERSE</span>
+          <h1>작은 행성을<br /><em>키워보세요.</em></h1>
+          <p>한 번의 클릭에서 시작해, 나만의 은하를 만들어 보세요.</p>
+        </div>
+        <div class="orbit" aria-hidden="true">
+          <div class="planet"><span>✦</span></div>
+          <i class="satellite"></i><i class="spark spark-one">✦</i><i class="spark spark-two">·</i>
+        </div>
+      </section>
+      <section class="dashboard" aria-label="게임 현황">
+        <article class="resource-card">
+          <div class="card-label">
+            <span class="resource-icon">✧</span><span>현재 보유 별가루</span>
+          </div>
+          <div class="amount" id="amount">0</div>
+          <div class="resource-foot">
+            <span><b id="rate">0</b> / 초</span><span class="live"><i></i> 생산 중</span>
+          </div>
+          <div class="progress-track"><span id="progress"></span></div>
+          <div class="progress-caption">
+            <span>다음 별 제련까지</span><b><span id="remaining">10</span> ✧</b>
+          </div>
+        </article>
+        <div class="side-stats">
+          <article class="stat-card">
+            <span class="stat-icon">⌁</span>
+            <div>
+              <span class="stat-label">클릭 생산량</span
+              ><strong>+<span id="click-rate">1</span><small> / 클릭</small></strong>
+            </div>
+          </article>
+          <article class="stat-card">
+            <span class="stat-icon">◷</span>
+            <div>
+              <span class="stat-label">함께한 시간</span
+              ><strong id="play-time">0<small> 초</small></strong>
+            </div>
+          </article>
+          <article class="stat-card">
+            <span class="stat-icon">✦</span>
+            <div>
+              <span class="stat-label">직접 모은 별가루</span><strong id="earned">0</strong>
+            </div>
+          </article>
+        </div>
+      </section>
+      <section class="actions">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">YOUR NEXT STEP</span>
+            <h2>별을 모아보세요</h2>
+          </div>
+          <span class="hint">천천히 모아도 괜찮아요.</span>
+        </div>
+        <div class="action-grid">
+          <button class="collect-button" id="collect">
+            <span class="collect-symbol">✧</span
+            ><span><b>별가루 모으기</b><small>탭해서 별가루를 모으세요</small></span
+            ><kbd>클릭</kbd>
+          </button>
+          <article class="upgrade-card">
+            <div class="upgrade-art">✧</div>
+            <div class="upgrade-copy">
+              <span class="eyebrow">업그레이드 01</span><b>자동 별 제련기</b
+              ><small>매초 별가루 <span id="upgrade-gain">+1</span> 생성</small>
+            </div>
+            <button class="buy-button" id="upgrade">
+              <span>제련기 만들기</span><b>✧ <span id="cost">10</span></b>
+            </button>
+          </article>
+        </div>
+      </section>
+      <footer>
+        <span>GEULION으로 만든 작은 세계</span><span>저장 데이터는 이 브라우저에 보관됩니다.</span>
+      </footer>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </main>
+  </body>
+</html>
