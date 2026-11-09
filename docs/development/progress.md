@@ -3,17 +3,17 @@
 ## Current status
 
 - Current Phase: 10 — Language Server reliability and editor-workflow expansion
-- Current Issue: [#105 — Add semantic function folding ranges to the Language Server](https://github.com/dltldn1234/geulion/issues/105)
-- Working branch: `105-feat/folding-ranges`
+- Current Issue: [#110 — Record PR #109 and current commit progress](https://github.com/dltldn1234/geulion/issues/110)
+- Working branch: `110-docs/progress-109`
 - Initial baseline SHA: `afc1b41`
 - Initial main commit count: 58
-- Latest verified main SHA: `a7406a1077215e14440d583a7f7a818ba3854bb3` (2026-11-09; fetched from origin after PR #106 merge)
-- Current unique commits reachable from main: 208 (58 initial + 150)
-- New commits reachable from baseline `afc1b41`: 150
-- Local unmerged Issue #105 commits: 2 (folding-range implementation and progress-ledger update; PR/CI/merge pending).
-- Remaining to minimum 300: 92
-- Remaining to primary 400: 192
-- Remaining to extended 500: 292
+- Latest verified main SHA: `0b1e9928def4de282a6c9f62460c1a2222f8f783` (2026-11-09; fetched from origin after PR #109 merge)
+- Current unique commits reachable from main: 214 (58 initial + 156)
+- New commits reachable from baseline `afc1b41`: 156
+- Local unmerged Issue #110 commits: 1 (progress-ledger update; PR/CI/merge pending).
+- Remaining to minimum 300: 86
+- Remaining to primary 400: 186
+- Remaining to extended 500: 286
 - Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed; [#36](https://github.com/dltldn1234/geulion/pull/36), Merge Commit `04a72ba`, CI passed; [#38](https://github.com/dltldn1234/geulion/pull/38), Merge Commit `0eb762f587a9aae70e9fb539513fcbd5959ca2b1`, CI passed; [#40](https://github.com/dltldn1234/geulion/pull/40), Merge Commit `cc62261e93b67b2519e01e9895a77111680101c1`, CI run `42508397430` passed; [#42](https://github.com/dltldn1234/geulion/pull/42), Merge Commit `30f9f5c07d563fd5867e92cdc5924f56b7cd0b7e`, CI run `42534464926` passed; [#44](https://github.com/dltldn1234/geulion/pull/44), Merge Commit `6b30d98f534c0ff8c3acbbdca50086f0fd9ff325`, CI run `42536546327` passed; [#46](https://github.com/dltldn1234/geulion/pull/46), Merge Commit `de9df5bc305966999609c32cc676f0fe59574df6`, CI run `42538207631` passed; [#48](https://github.com/dltldn1234/geulion/pull/48), Merge Commit `1b0f3f7daa75322516a25ee1c0a87c85d27a4e36`, CI run `42540812517` passed; [#50](https://github.com/dltldn1234/geulion/pull/50), Merge Commit `852915e29178de5475a072a75e2201fa2dc0a36c`, CI run `42542499311` passed; [#52](https://github.com/dltldn1234/geulion/pull/52), Merge Commit `77ae9fe05bb7b4b711fdc642b90f708506d9eb12`, CI run `42543552208` passed; [#54](https://github.com/dltldn1234/geulion/pull/54), Merge Commit `9d3fa6dbc7daa693dbf3d1f7d6e82d3f84eaaeb1`, CI run `42546017229` passed; [#56](https://github.com/dltldn1234/geulion/pull/56), Merge Commit `a5e7aa1471a875be5bb41ef1518a8de550161700`, CI run `42548068173` passed; [#58](https://github.com/dltldn1234/geulion/pull/58), Merge Commit `e22138a0b86a8c0a5b484f58a4e522411d06fa5f`, CI run `42551438200` passed; [#60](https://github.com/dltldn1234/geulion/pull/60), Merge Commit `393ea42803152555e3b8d28ec0891d8421b8b8fe`, CI run `42552939016` passed; [#62](https://github.com/dltldn1234/geulion/pull/62), Merge Commit `b3a6ef15f54ed274852e801fdb6e50ebfb53c901`, CI run `42554061977` passed; [#64](https://github.com/dltldn1234/geulion/pull/64), Merge Commit `9b36d6e1f99c79ecd7643d4ed9d11b732c7091e5`, CI run `42554755892` passed; [#66](https://github.com/dltldn1234/geulion/pull/66), Merge Commit `a095ddd205034d95249bc03932368e97ad20b3b9`, CI run `42555621830` passed; [#68](https://github.com/dltldn1234/geulion/pull/68), Merge Commit `5ea8d3fa2862ec199173fdae5c7cc85ee1e7e3a3`, CI run `42556270362` passed; [#70](https://github.com/dltldn1234/geulion/pull/70), Merge Commit `55662e2eaab49a63a497207eee91b3b915cb5f21`, CI run `42558581415` passed; [#72](https://github.com/dltldn1234/geulion/pull/72), Merge Commit `99094715bab6327056addeee0cd0f4d482ee7e82`, CI run `42559536742` passed; [#74](https://github.com/dltldn1234/geulion/pull/74), Merge Commit `43702585d2fddb5653b2df584162d7033e834fcf`, CI run `42563653079` passed.; [#76](https://github.com/dltldn1234/geulion/pull/76), Merge Commit `9472b625266222253cf422c24f352ce1e9f41472`, CI passed.
 - Latest merged slice: [PR #80](https://github.com/dltldn1234/geulion/pull/80), Merge Commit `c1f868b59948711084588332bec4f7c7f992e5fd`, CI run `42576077086` passed; Issue #79 closed as completed.
 - [PR #82](https://github.com/dltldn1234/geulion/pull/82) completed Issue #81 workspace symbol search and merged as `bfb4effefb1fac3181b21d0f897028eac74e9d3a`; CI passed and Issue #81 is closed.
@@ -29,6 +29,8 @@
 - [PR #102](https://github.com/dltldn1234/geulion/pull/102) completed Issue #101 semantic document highlights; Merge Commit `670de10ad0c1924a7bede9dfd7e31e3ac4794d82`, CI run `42599065615` passed, and Issue #101 is closed.
 - [PR #104](https://github.com/dltldn1234/geulion/pull/104) recorded the PR #102 merge and verified 203-commit main snapshot; Merge Commit `87985e88f42b5925b2e6e55f5ca42079994ed4db`, CI run `42599433939` passed, and Issue #103 is closed.
 - [PR #106](https://github.com/dltldn1234/geulion/pull/106) recorded the PR #102 merge and verified 205-commit main snapshot; Merge Commit `a7406a1077215e14440d583a7f7a818ba3854bb3`, CI run `42600019568` passed, and Issue #103 is closed.
+- [PR #107](https://github.com/dltldn1234/geulion/pull/107) completed Issue #105 function folding ranges; Merge Commit `8a694194d1eef484e1ca71ccef286b5e45afe0b9`, CI run `42600822935` passed, and Issue #105 is closed.
+- [PR #109](https://github.com/dltldn1234/geulion/pull/109) completed Issue #108 semantic token highlighting; Merge Commit `0b1e9928def4de282a6c9f62460c1a2222f8f783`, CI run `42603373855` passed, and Issue #108 is closed.
 
 ## Completed work
 
@@ -91,8 +93,9 @@
 - Issue #101 adds `textDocument/documentHighlight` for semantic declarations and references in the current buffer, with UTF-8/16/32 range coverage and fresh results after edits and close. Focused Language Server tests pass (30), full workspace tests pass (25 files / 272 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check` pass.
 - Issue #101 PR #102 CI passed, and the PR was merged as recorded above.
 - Issue #103 PR #104 CI passed, and the PR was merged as recorded above.
-- Issue #105 adds `textDocument/foldingRange` for multiline top-level functions, omits single-line declarations, and returns current-buffer ranges after negotiated UTF-8/16/32 initialization. Focused Language Server tests pass (33), full workspace tests pass (25 files / 275 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check` pass.
-- Issue #103 PR #106 is open; GitHub has not yet reported its CI workflow run.
+- Issue #105 adds `textDocument/foldingRange` for multiline top-level functions, omits single-line declarations, and returns current-buffer ranges after negotiated UTF-8/16/32 initialization. Focused Language Server tests pass (33), full workspace tests pass (25 files / 275 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check` pass. PR #107 CI passed and merged as recorded above.
+- Issue #108 adds full LSP semantic tokens for lexer keywords, strings, numbers, operators, punctuation, and comments, including UTF-8/16/32 positions, BOM offsets, CRLF, escaped-string boundaries, and fresh open-buffer results. Focused Language Server tests pass (36), full workspace tests pass (25 files / 278 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check` pass. PR #109 CI passed and merged as recorded above.
+- Issue #110 updates this ledger with verified PR #107/#109 merge results and the 214-commit `origin/main` snapshot.
 
 ## Known limitations
 
@@ -102,7 +105,7 @@
 
 ## Next
 
-1. Finish Issue #105 function folding PR, CI, and Merge Commit.
+1. Complete Issue #110 progress-ledger PR, CI, and Merge Commit.
 2. Continue substantive Phase 10 reliability and editor-workflow Issues; keep the commit-growth ledger based on commits reachable from `main`.
 
 ## Commit growth tracking
