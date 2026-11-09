@@ -11,7 +11,7 @@
 - Latest verified main SHA: `a095ddd205034d95249bc03932368e97ad20b3b9` (2026-11-09)
 - Current unique commits reachable from main: 141
 - New commits reachable from main since baseline: 83
-- Issue #67 local unmerged commits: 4 (initial progress record, hover implementation, hover tests/docs, this progress update).
+- Issue #67 local unmerged commits: 4 (hover implementation, hover tests/docs, initial progress update, corrected progress tracking).
 - Remaining to minimum 300: 159
 - Remaining to primary 400: 259
 - Remaining to extended 500: 359
