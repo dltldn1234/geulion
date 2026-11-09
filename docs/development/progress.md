@@ -10,7 +10,7 @@
 - Latest verified main SHA: `852915e29178de5475a072a75e2201fa2dc0a36c` (2026-11-09)
 - Current unique commits reachable from `origin/main`: 97
 - New commits reachable from main since baseline: 39
-- Local unmerged Issue #51 commits: 2 (`779af3a`, `07c312e`)
+- Local unmerged Issue #51 commits: 3 (`779af3a`, `07c312e`, `a42673b`)
 - Remaining to minimum 300: 203
 - Remaining to primary 400: 303
 - Remaining to extended 500: 403
@@ -44,7 +44,7 @@
 ## Known limitations
 
 - The v0.2 increment covers only four pure string queries. Input, clocks, timers, randomness, persistence, filesystem access, browser APIs, FFI, and modules are not implemented.
-- The v0.3 browser module, invocation ABI, and save-envelope codec are merged. Persistence adapters and Idle UI/runtime integration remain separate work.
+- The v0.3 browser module, invocation ABI, and save-envelope codec are merged. The Issue #51 repository adapter is under PR review; concrete storage backend and Idle UI/runtime integration remain separate work.
 - The Node target remains Node-specific and auto-runs `시작`; only the explicit browser target produces a host-driven module without automatic entrypoint execution.
 
 ## Next
