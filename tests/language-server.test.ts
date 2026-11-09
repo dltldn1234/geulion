@@ -8,6 +8,8 @@ type Message = Record<string, unknown>;
 class LspClient {
   readonly child: ChildProcessWithoutNullStreams;
   #buffer = Buffer.alloc(0);
+  #stdout: Buffer[] = [];
+  #stderr: Buffer[] = [];
   #messages: Message[] = [];
   #waiters: { predicate: (message: Message) => boolean; resolve: (message: Message) => void }[] =
     [];
@@ -19,9 +21,11 @@ class LspClient {
     );
     this.child = spawn(process.execPath, [serverPath], { stdio: "pipe" });
     this.child.stdout.on("data", (chunk: Buffer) => {
+      this.#stdout.push(chunk);
       this.#buffer = Buffer.concat([this.#buffer, chunk]);
       this.#readMessages();
     });
+    this.child.stderr.on("data", (chunk: Buffer) => this.#stderr.push(chunk));
   }
 
   send(message: Message): void {
@@ -44,6 +48,25 @@ class LspClient {
     this.child.stdin.write(Buffer.concat(frames));
   }
 
+  sendRaw(frame: Buffer | string): void {
+    this.child.stdin.write(typeof frame === "string" ? Buffer.from(frame) : frame);
+  }
+
+  endInput(): void {
+    this.child.stdin.end();
+  }
+
+  async waitForExit(): Promise<{ code: number | null; stdout: Buffer; stderr: Buffer }> {
+    const code = await new Promise<number | null>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("Language server did not exit")), 3000);
+      this.child.once("close", (exitCode) => {
+        clearTimeout(timer);
+        resolve(exitCode);
+      });
+    });
+    return { code, stdout: Buffer.concat(this.#stdout), stderr: Buffer.concat(this.#stderr) };
+  }
+
   #frame(message: Message): Buffer {
     const body = Buffer.from(JSON.stringify(message), "utf8");
     return Buffer.concat([Buffer.from(`Content-Length: ${body.length}\r\n\r\n`), body]);
@@ -57,6 +80,10 @@ class LspClient {
 
   notification(method: string, params: Message = {}): void {
     this.send({ jsonrpc: "2.0", method, params });
+  }
+
+  notificationBatch(...notifications: Message[]): void {
+    this.sendBatch(notifications.map((notification) => ({ jsonrpc: "2.0", ...notification })));
   }
 
   waitFor(predicate: (message: Message) => boolean): Promise<Message> {
@@ -100,6 +127,121 @@ class LspClient {
 }
 
 describe("GEULION Language Server Protocol", () => {
+  it.each([
+    ["missing Content-Length", "X-Trace: test\r\n\r\n"],
+    ["duplicate Content-Length", "Content-Length: 2\r\ncontent-length: 2\r\n\r\n{}"],
+    ["invalid Content-Length", "Content-Length: 2x\r\n\r\n{}"],
+    ["negative Content-Length", "Content-Length: -1\r\n\r\n"],
+    ["non-ASCII header", "Content-Length: 2\r\nX-Note: 가\r\n\r\n{}"],
+  ])("rejects %s with a non-zero exit and no stdout", async (_name, frame) => {
+    const client = new LspClient();
+    client.sendRaw(frame);
+    client.endInput();
+    const result = await client.waitForExit();
+    expect(result.code).not.toBe(0);
+    expect(result.stdout).toHaveLength(0);
+    expect(result.stderr.toString("utf8")).toContain("LSP");
+  });
+
+  it.each([
+    ["oversized header", `X-Trace: ${"x".repeat(8193)}`],
+    ["oversized body", `Content-Length: ${16 * 1024 * 1024 + 1}\r\n\r\n`],
+  ])("bounds an %s", async (_name, prefix) => {
+    const client = new LspClient();
+    client.sendRaw(prefix);
+    client.endInput();
+    const result = await client.waitForExit();
+    expect(result.code).not.toBe(0);
+    expect(result.stdout).toHaveLength(0);
+  });
+
+  it.each([
+    ["truncated header", "Content-Length: 20\r\n"],
+    ["truncated body", "Content-Length: 20\r\n\r\n{}"],
+  ])("reports a %s at EOF", async (_name, frame) => {
+    const client = new LspClient();
+    client.sendRaw(frame);
+    client.endInput();
+    const result = await client.waitForExit();
+    expect(result.code).not.toBe(0);
+    expect(result.stderr.toString("utf8")).toContain("Unexpected end of input");
+    expect(result.stdout).toHaveLength(0);
+  });
+
+  it("recovers from malformed JSON and invalid UTF-8 when their frame lengths are known", async () => {
+    const client = new LspClient();
+    try {
+      const invalidUtf8 = Buffer.from([0xff, 0xfe]);
+      const invalidUtf8Frame = Buffer.concat([
+        Buffer.from(`Content-Length: ${invalidUtf8.length}\r\n\r\n`),
+        invalidUtf8,
+      ]);
+      const validFrame = Buffer.from(
+        `Content-Length: ${Buffer.byteLength('{"jsonrpc":"2.0","id":7,"method":"initialize","params":{}}')}\r\n\r\n{"jsonrpc":"2.0","id":7,"method":"initialize","params":{}}`,
+      );
+      client.sendRaw(Buffer.concat([invalidUtf8Frame, validFrame]));
+      const parseError = await client.waitFor((message) => message.id === null);
+      expect((parseError.error as { code: number }).code).toBe(-32700);
+      const initialized = await client.waitFor((message) => message.id === 7);
+      expect(initialized.result).toHaveProperty("capabilities");
+      client.notification("initialized");
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("rejects invalid JSON-RPC envelopes and enforces initialize/shutdown ordering", async () => {
+    const client = new LspClient();
+    try {
+      client.sendBatch([
+        { jsonrpc: "1.0", id: 1, method: "initialize" },
+        { jsonrpc: "2.0", id: 2, method: "initialize", params: "invalid" },
+        { jsonrpc: "2.0", id: 3, method: 42 },
+      ]);
+      for (const id of [1, 2, 3]) {
+        const response = await client.waitFor((message) => message.id === id);
+        expect((response.error as { code: number }).code).toBe(-32600);
+      }
+
+      const notInitialized = await client.request("textDocument/completion");
+      expect((notInitialized.error as { code: number }).code).toBe(-32002);
+      client.notification("workspace/unknownNotification");
+
+      const initialized = await client.request("initialize", { capabilities: {} });
+      expect(initialized.result).toHaveProperty("capabilities");
+      const premature = await client.request("textDocument/completion");
+      expect((premature.error as { code: number }).code).toBe(-32002);
+      const readyRequestId = 5;
+      client.sendBatch([
+        { jsonrpc: "2.0", method: "initialized" },
+        {
+          jsonrpc: "2.0",
+          id: readyRequestId,
+          method: "textDocument/completion",
+          params: {},
+        },
+      ]);
+      const ready = await client.waitFor((message) => message.id === readyRequestId);
+      expect(ready.result).toEqual([]);
+      const shutdown = await client.request("shutdown");
+      expect(shutdown.result).toBeNull();
+      const afterShutdown = await client.request("textDocument/completion");
+      expect((afterShutdown.error as { code: number }).code).toBe(-32600);
+      const reinitialize = await client.request("initialize", { capabilities: {} });
+      expect((reinitialize.error as { code: number }).code).toBe(-32600);
+      client.notification("textDocument/didOpen", {
+        textDocument: { uri: "file:///ignored.geul", version: 1, text: "malformed" },
+      });
+      client.notification("exit");
+      client.endInput();
+      const result = await client.waitForExit();
+      expect(result.code).toBe(0);
+    } catch (error) {
+      client.child.kill();
+      throw error;
+    }
+  });
+
   it("serves lifecycle, diagnostics, and compiler-backed editor features over stdio", async () => {
     const client = new LspClient();
     try {
@@ -129,8 +271,9 @@ describe("GEULION Language Server Protocol", () => {
       const uri = "file:///workspace/main.geul";
       const text =
         '함수 인사(이름: 문자열) -> 문자열 { 반환 이름 }\n함수 시작() -> 없음 { 출력(인사("가")) }';
-      client.notification("textDocument/didOpen", {
-        textDocument: { uri, languageId: "geulion", version: 1, text },
+      client.notificationBatch({
+        method: "textDocument/didOpen",
+        params: { textDocument: { uri, languageId: "geulion", version: 1, text } },
       });
       const openedDiagnostics = await client.waitFor((message) => {
         if (message.method !== "textDocument/publishDiagnostics") return false;
@@ -312,8 +455,9 @@ describe("GEULION Language Server Protocol", () => {
 
         const uri = `file:///workspace/${encoding}.geul`;
         const text = "함수 인사() -> 정수 { 반환 1 }\n함수 시작() -> 없음 { 출력(인사()) }";
-        client.notification("textDocument/didOpen", {
-          textDocument: { uri, languageId: "geulion", version: 1, text },
+        client.notificationBatch({
+          method: "textDocument/didOpen",
+          params: { textDocument: { uri, languageId: "geulion", version: 1, text } },
         });
         const secondLine = text.slice(text.indexOf("\n") + 1);
         const callCharacter = secondLine.indexOf("인사(");

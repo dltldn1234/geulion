@@ -119,6 +119,7 @@ let languageVersion: LanguageVersion = "0.1";
 let positionEncoding: PositionEncoding = "utf-16";
 let clientSupportsSnippets = false;
 let initialized = false;
+let initializationComplete = false;
 let shutdownRequested = false;
 let input = Buffer.alloc(0);
 let expectedBodyLength: number | undefined;
@@ -161,15 +162,19 @@ function readFrame(): JsonObject | typeof MALFORMED_MESSAGE | undefined {
         return undefined;
       }
       if (boundary > MAX_HEADER_LENGTH) throw new Error("LSP header exceeds the size limit");
-      const header = input.subarray(0, boundary).toString("ascii");
+      const headerBytes = input.subarray(0, boundary);
+      if (headerBytes.some((byte) => (byte < 0x20 && byte !== 0x09) || byte > 0x7e))
+        throw new Error("LSP header contains non-ASCII bytes");
+      const header = headerBytes.toString("ascii");
       const lengths = header.split("\r\n").flatMap((line) => {
         const separator = line.indexOf(":");
         return separator >= 0 && line.slice(0, separator).trim().toLowerCase() === "content-length"
           ? [line.slice(separator + 1).trim()]
           : [];
       });
-      if (lengths.length !== 1 || !/^\d+$/u.test(lengths[0] ?? ""))
-        throw new Error("LSP frame must contain one valid Content-Length header");
+      if (lengths.length !== 1) throw new Error("LSP frame must contain one Content-Length header");
+      if (!/^\d+$/u.test(lengths[0] ?? ""))
+        throw new Error("LSP frame must contain a valid Content-Length header");
       expectedBodyLength = Number(lengths[0]);
       if (!Number.isSafeInteger(expectedBodyLength) || expectedBodyLength > MAX_CONTENT_LENGTH)
         throw new Error("LSP frame exceeds the size limit");
@@ -413,6 +418,7 @@ function insideComment(text: string, offset: number): boolean {
 }
 
 function handleRequest(method: string, params: JsonObject): unknown {
+  if (shutdownRequested) throw new RpcError(-32600, "Server has shut down");
   if (method === "initialize") {
     if (initialized) throw new RpcError(-32600, "Server is already initialized");
     const clientCapabilities = getObject(params, "capabilities");
@@ -434,6 +440,7 @@ function handleRequest(method: string, params: JsonObject): unknown {
     const requestedVersion = getString(options ?? {}, "languageVersion");
     if (requestedVersion && LANGUAGE_VERSIONS.has(requestedVersion as LanguageVersion))
       languageVersion = requestedVersion as LanguageVersion;
+    initialized = true;
     return {
       capabilities: {
         positionEncoding,
@@ -450,6 +457,8 @@ function handleRequest(method: string, params: JsonObject): unknown {
     };
   }
   if (!initialized && method !== "shutdown") throw new RpcError(-32002, "Server not initialized");
+  if (initialized && !initializationComplete && method !== "shutdown")
+    throw new RpcError(-32002, "Client initialization is not complete");
   if (method === "shutdown") {
     shutdownRequested = true;
     return null;
@@ -637,7 +646,7 @@ class RpcError extends Error {
 
 function handleNotification(method: string, params: JsonObject): void {
   if (method === "initialized") {
-    initialized = true;
+    if (initialized) initializationComplete = true;
     return;
   }
   if (method === "exit") {
@@ -645,6 +654,7 @@ function handleNotification(method: string, params: JsonObject): void {
     process.stdin.pause();
     return;
   }
+  if (!initialized || !initializationComplete || shutdownRequested) return;
   if (method === "textDocument/didOpen") {
     const textDocument = getObject(params, "textDocument");
     const uri = getString(textDocument, "uri");
@@ -706,11 +716,21 @@ function requestIdKey(id: unknown): string {
 function dispatch(message: JsonObject): void {
   const method = getString(message, "method");
   const hasId = Object.hasOwn(message, "id");
-  if (message.jsonrpc !== "2.0" || !method) {
+  if (
+    message.jsonrpc !== "2.0" ||
+    !method ||
+    (hasId && typeof message.id !== "string" && typeof message.id !== "number") ||
+    (Object.hasOwn(message, "params") &&
+      !Array.isArray(message.params) &&
+      !isObject(message.params)) ||
+    (hasId && Object.hasOwn(message, "result")) ||
+    (hasId && Object.hasOwn(message, "error"))
+  ) {
     if (hasId) respondError(message.id, -32600, "Invalid Request");
     return;
   }
-  const params = getObject(message, "params") ?? {};
+  const rawParams = message.params;
+  const params = isObject(rawParams) ? rawParams : {};
   if (hasId) {
     const id = message.id;
     try {
@@ -788,5 +808,8 @@ process.stdin.on("data", (chunk: Buffer) => {
   }
 });
 process.stdin.on("end", () => {
-  if (input.length > 0 || expectedBodyLength !== undefined) process.exitCode = 1;
+  if (input.length > 0 || expectedBodyLength !== undefined) {
+    logError(new Error("Unexpected end of input inside an LSP frame"));
+    process.exitCode = 1;
+  }
 });

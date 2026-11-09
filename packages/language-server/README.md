@@ -23,6 +23,8 @@ The package also exposes the `geulion-language-server` executable when installed
 - Semantic references and rename edits checked by the GEULION compiler before being returned
 - Cancellation for requests still queued for dispatch, stale document version rejection, and malformed JSON frame recovery
 
+Transport input is bounded to 8 KiB of headers and 16 MiB of body data. Each frame must contain exactly one non-negative decimal `Content-Length` header. Invalid or oversized headers terminate the connection because the next frame boundary cannot be determined safely. Malformed UTF-8 or JSON bodies return a JSON-RPC parse error and the next length-delimited frame is still processed. EOF in a partial header or body is reported on standard error and exits unsuccessfully. Standard output remains reserved for framed JSON-RPC messages.
+
 Language version defaults to `0.1`. Clients can select `0.1`, `0.2`, or `0.3` with `initializationOptions.languageVersion`, then update it with `workspace/didChangeConfiguration` using `settings.geulion.languageVersion`.
 
 The server reuses `@geulion/compiler` analysis and diagnostics. Cross-file modules, workspace indexing, and resolving definitions from other documents are not implemented.
