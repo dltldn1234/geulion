@@ -2,20 +2,20 @@
 
 ## Current status
 
-- Current Phase: 8 — VS Code Extension & Language Server (CLI commands)
-- Current Issue: [#59 — Add VS Code CLI check and run commands](https://github.com/dltldn1234/geulion/issues/59)
-- Working branch: `59-feat/vscode-cli-commands`
+- Current Phase: 8 — VS Code Extension & Language Server (structured editor diagnostics)
+- Current Issue: [#61 — Publish structured compiler diagnostics for editor integration](https://github.com/dltldn1234/geulion/issues/61)
+- Working branch: `61-feat/structured-editor-diagnostics`
 - Current PR: not opened yet.
 - Initial baseline SHA: `afc1b41`
 - Initial main commit count: 58
-- Latest verified main SHA: `e22138a0b86a8c0a5b484f58a4e522411d06fa5f` (2026-11-09)
-- Current unique commits reachable from main: 121
-- New commits reachable from main since baseline: 63
-- Issue #59 local unmerged commits: 0 before this implementation; changes are in progress.
-- Remaining to minimum 300: 179
-- Remaining to primary 400: 279
-- Remaining to extended 500: 379
-- Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed; [#36](https://github.com/dltldn1234/geulion/pull/36), Merge Commit `04a72ba`, CI passed; [#38](https://github.com/dltldn1234/geulion/pull/38), Merge Commit `0eb762f587a9aae70e9fb539513fcbd5959ca2b1`, CI passed; [#40](https://github.com/dltldn1234/geulion/pull/40), Merge Commit `cc62261e93b67b2519e01e9895a77111680101c1`, CI run `42508397430` passed; [#42](https://github.com/dltldn1234/geulion/pull/42), Merge Commit `30f9f5c07d563fd5867e92cdc5924f56b7cd0b7e`, CI run `42534464926` passed; [#44](https://github.com/dltldn1234/geulion/pull/44), Merge Commit `6b30d98f534c0ff8c3acbbdca50086f0fd9ff325`, CI run `42536546327` passed; [#46](https://github.com/dltldn1234/geulion/pull/46), Merge Commit `de9df5bc305966999609c32cc676f0fe59574df6`, CI run `42538207631` passed; [#48](https://github.com/dltldn1234/geulion/pull/48), Merge Commit `1b0f3f7daa75322516a25ee1c0a87c85d27a4e36`, CI run `42540812517` passed; [#50](https://github.com/dltldn1234/geulion/pull/50), Merge Commit `852915e29178de5475a072a75e2201fa2dc0a36c`, CI run `42542499311` passed; [#52](https://github.com/dltldn1234/geulion/pull/52), Merge Commit `77ae9fe05bb7b4b711fdc642b90f708506d9eb12`, CI run `42543552208` passed; [#54](https://github.com/dltldn1234/geulion/pull/54), Merge Commit `9d3fa6dbc7daa693dbf3d1f7d6e82d3f84eaaeb1`, CI run `42546017229` passed; [#56](https://github.com/dltldn1234/geulion/pull/56), Merge Commit `a5e7aa1471a875be5bb41ef1518a8de550161700`, CI run `42548068173` passed; [#58](https://github.com/dltldn1234/geulion/pull/58), Merge Commit `e22138a0b86a8c0a5b484f58a4e522411d06fa5f`, CI run `42551438200` passed.
+- Latest verified main SHA: `393ea42803152555e3b8d28ec0891d8421b8b8fe` (2026-11-09)
+- Current unique commits reachable from main: 125
+- New commits reachable from main since baseline: 67
+- Issue #61 local unmerged commits: 5 (initial progress record, CLI contract, editor diagnostics, multiple-diagnostic coverage, this progress update).
+- Remaining to minimum 300: 175
+- Remaining to primary 400: 275
+- Remaining to extended 500: 375
+- Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed; [#36](https://github.com/dltldn1234/geulion/pull/36), Merge Commit `04a72ba`, CI passed; [#38](https://github.com/dltldn1234/geulion/pull/38), Merge Commit `0eb762f587a9aae70e9fb539513fcbd5959ca2b1`, CI passed; [#40](https://github.com/dltldn1234/geulion/pull/40), Merge Commit `cc62261e93b67b2519e01e9895a77111680101c1`, CI run `42508397430` passed; [#42](https://github.com/dltldn1234/geulion/pull/42), Merge Commit `30f9f5c07d563fd5867e92cdc5924f56b7cd0b7e`, CI run `42534464926` passed; [#44](https://github.com/dltldn1234/geulion/pull/44), Merge Commit `6b30d98f534c0ff8c3acbbdca50086f0fd9ff325`, CI run `42536546327` passed; [#46](https://github.com/dltldn1234/geulion/pull/46), Merge Commit `de9df5bc305966999609c32cc676f0fe59574df6`, CI run `42538207631` passed; [#48](https://github.com/dltldn1234/geulion/pull/48), Merge Commit `1b0f3f7daa75322516a25ee1c0a87c85d27a4e36`, CI run `42540812517` passed; [#50](https://github.com/dltldn1234/geulion/pull/50), Merge Commit `852915e29178de5475a072a75e2201fa2dc0a36c`, CI run `42542499311` passed; [#52](https://github.com/dltldn1234/geulion/pull/52), Merge Commit `77ae9fe05bb7b4b711fdc642b90f708506d9eb12`, CI run `42543552208` passed; [#54](https://github.com/dltldn1234/geulion/pull/54), Merge Commit `9d3fa6dbc7daa693dbf3d1f7d6e82d3f84eaaeb1`, CI run `42546017229` passed; [#56](https://github.com/dltldn1234/geulion/pull/56), Merge Commit `a5e7aa1471a875be5bb41ef1518a8de550161700`, CI run `42548068173` passed; [#58](https://github.com/dltldn1234/geulion/pull/58), Merge Commit `e22138a0b86a8c0a5b484f58a4e522411d06fa5f`, CI run `42551438200` passed; [#60](https://github.com/dltldn1234/geulion/pull/60), Merge Commit `393ea42803152555e3b8d28ec0891d8421b8b8fe`, CI run `42552939016` passed.
 
 ## Completed work
 
@@ -46,18 +46,20 @@
 - Issue #55 / PR #56 completed the Phase 7 offline-production slice and merged after CI run `42548068173` passed.
 - Issue #57 adds VS Code `.geul` registration, a TextMate grammar aligned with the lexer keyword table, bracket/comment rules, starter snippets, and theme-aware language icons. The VS Code Extension Development Host loaded `packages/vscode`; 3 focused tests validate manifest paths and lexer coverage. Full workspace tests pass with 16 files / 210 tests; typecheck, lint, format, and diff checks pass.
 - Issue #57 / PR #58 completed Phase 8 language basics and merged after CI run `42551438200` passed.
-- Issue #59 adds VS Code check/run command registrations, per-user CLI executable and argument settings, explicit language version selection, no-shell process invocation, Output Channel results, and validation that rejects unsupported v0.3 execution. Local workspace tests pass with 17 files / 216 tests; typecheck, lint, format, and diff checks pass. The Extension Development Host log confirms extension activation; PR and remote CI are pending.
+- Issue #59 adds VS Code check/run command registrations, per-user CLI executable and argument settings, explicit language version selection, no-shell process invocation, Output Channel results, and validation that rejects unsupported v0.3 execution. Local workspace tests pass with 17 files / 216 tests; typecheck, lint, format, and diff checks pass. PR #60 merged after CI passed.
+- Issue #59 / PR #60 completed the VS Code CLI check/run commands and merged with Merge Commit `393ea42803152555e3b8d28ec0891d8421b8b8fe`; CI run `42552939016` passed.
+- Issue #61 adds `check --format json` with compiler diagnostic fields and ranges, stdin source support for unsaved editor buffers, and debounced VS Code diagnostic collection that kills superseded checks and clears results on close. Local workspace tests pass with 18 files / 219 tests; build/typecheck, ESLint, Prettier, and diff checks pass. PR and CI are pending.
 
 ## Known limitations
 
 - The v0.2 increment covers only four pure string queries. Input, clocks, timers, randomness, persistence, filesystem access, browser APIs, FFI, and modules are not implemented.
-- Phase 7's playable Idle slice and capped offline-production/save migration are merged. Phase 8 language support and CLI check/run commands are implemented; Language Server functionality remains.
+- Phase 7's playable Idle slice and capped offline-production/save migration are merged. Phase 8 language support, CLI check/run commands, and structured editor diagnostics are implemented; further Language Server functionality remains.
 - The Node target remains Node-specific and auto-runs `시작`; only the explicit browser target produces a host-driven module without automatic entrypoint execution.
 
 ## Next
 
-1. Open and merge the Issue #59 PR after required CI and review checks pass.
-2. Continue Phase 8 with Language Server diagnostics, reusing the existing lexer/parser/semantic analyzer.
+1. Open and merge the Issue #61 PR after CI passes.
+2. Continue Phase 8 with further Language Server functionality, reusing the existing lexer/parser/semantic analyzer.
 
 ## Commit growth tracking
 

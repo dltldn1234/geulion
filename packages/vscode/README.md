@@ -12,6 +12,8 @@ code --new-window --extensionDevelopmentPath="$PWD/packages/vscode" examples/idl
 
 The extension provides two command-palette actions: `GEULION: 현재 파일 검사` and `GEULION: 현재 파일 실행`. Set `geulion.executable` to the CLI executable; when using this repository's workspace CLI, `geulion.executable` can be `pnpm` and `geulion.arguments` can be `["exec", "geulion"]`. `geulion.languageVersion` selects 0.1, 0.2, or 0.3. The current CLI can check v0.3 programs but cannot run them yet. Commands pass arguments without a shell and stream results to the `GEULION` Output Channel.
 
+Open and edited `.geul` files receive compiler diagnostics after a short debounce. The extension sends the in-memory document text to `geulion check - --format json`, so unsaved edits are checked without writing temporary source files. Diagnostics are cleared when a document closes; results from superseded checks are ignored.
+
 Language Server features remain later Phase 8 work. Do not publish this extension to the Marketplace from this package.
 
 ## Validation

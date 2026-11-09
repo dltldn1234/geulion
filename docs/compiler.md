@@ -27,6 +27,7 @@ pnpm build
 pnpm exec geulion tokens main.geul
 pnpm exec geulion parse main.geul
 pnpm exec geulion check main.geul
+pnpm exec geulion check main.geul --format json
 pnpm exec geulion check main.geul --language-version 0.2
 pnpm exec geulion emit-js main.geul > main.mjs
 pnpm exec geulion run main.geul --language-version 0.2
@@ -38,6 +39,8 @@ node --enable-source-maps dist/main.mjs
 ```
 
 마지막 명령의 표준 출력은 `42`와 줄바꿈입니다. `tokens`는 토큰을, `parse`는 AST JSON을 표시합니다. `check`는 성공 시 표준 출력 없이 종료 코드 0을 반환합니다. `emit-js`는 검사에 성공한 경우에만 JavaScript를 표준 출력으로 내보냅니다. 진단은 표준 오류로 전달하며 실패 시 0이 아닌 종료 코드를 반환합니다. `--help`, `--version`은 기존대로 사용할 수 있습니다.
+
+`check --format json`은 버전 1 envelope를 표준 출력에 한 줄 JSON으로 기록합니다. `success`, 구조화된 compiler `diagnostics`, `suppressedCount`를 포함하고 진단 range는 compiler의 UTF-16 좌표를 유지합니다. 파일 읽기 실패는 빈 diagnostics와 `error.code: "file-read"`를 포함하며 종료 코드 2를 반환합니다. 성공은 0, 소스 진단은 1, CLI/파일 오류는 2입니다. 텍스트 출력은 기본값이며 변경되지 않습니다.
 
 `run`은 `compileSource`로 검사·생성한 ES Module을 임시 디렉터리에 기록하고 현재 `process.execPath`의 Node.js 프로세스로 실행합니다. 자식 프로세스는 부모와 같은 stdout/stderr를 사용하며 종료 코드를 CLI에 전달합니다. 임시 디렉터리는 실행 성공, 실패, 예외 경로에서 정리합니다. 실행 중 무한 루프 등으로 프로그램이 끝나지 않으면 `run`도 계속 기다립니다.
 
