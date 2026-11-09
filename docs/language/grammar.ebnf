@@ -102,3 +102,12 @@ EOF                  = end of source ;
    After an IDENTIFIER, a following '(' selects CallExpression; otherwise the
    token is an Identifier expression. A dictionary literal is only parsed in
    an expression position; a block is parsed where Statement requires Block. *)
+
+
+(* v0.4 project grammar extension; normative details and well-formedness are
+   specified in specification-v0.4-modules.md. v0.1-v0.3 retain Program above. *)
+ModuleV04             = { Separator }, { ImportDeclaration, { Separator } },
+                         [ FunctionDeclaration, { TopLevelTail }, { Separator } ], EOF ;
+ImportDeclaration     = Identifier("가져오기"), StringLiteral, Identifier("별칭"), Identifier ;
+QualifiedCallExpression = Identifier, ".", Identifier, "(", [ ArgumentList ], ")" ;
+PrimaryExpressionV04  = PrimaryExpression | QualifiedCallExpression ;
