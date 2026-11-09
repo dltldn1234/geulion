@@ -14,6 +14,8 @@ The extension provides two command-palette actions: `GEULION: 현재 파일 검�
 
 Open and edited `.geul` files receive compiler diagnostics after a short debounce. The extension sends the in-memory document text to `geulion check - --format json`, so unsaved edits are checked without writing temporary source files. Diagnostics are cleared when a document closes; results from superseded checks are ignored.
 
+Completion suggestions include the lexer keywords and core built-ins. String helper signatures appear only for language versions 0.2 and 0.3. The `공개 함수` declaration suggestion appears only for v0.3 because `공개` is a contextual modifier rather than a reserved word.
+
 Language Server features remain later Phase 8 work. Do not publish this extension to the Marketplace from this package.
 
 ## Validation

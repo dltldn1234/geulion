@@ -4,6 +4,59 @@ const { spawn } = require("node:child_process");
 const path = require("node:path");
 
 const LANGUAGE_VERSIONS = new Set(["0.1", "0.2", "0.3"]);
+const KEYWORDS = [
+  "상수",
+  "변수",
+  "함수",
+  "반환",
+  "만약",
+  "아니면",
+  "동안",
+  "중단",
+  "계속",
+  "그리고",
+  "또는",
+  "아니다",
+  "참",
+  "거짓",
+  "정수",
+  "실수",
+  "문자열",
+  "불리언",
+  "없음",
+  "목록",
+  "사전",
+  "선택",
+  "일부",
+  "비어있음",
+];
+const CORE_FUNCTIONS = [
+  { label: "출력", detail: "출력(값: 임의) -> 없음", snippet: "출력(${1:값})" },
+  { label: "정수로", detail: "정수로(값: 실수) -> 정수", snippet: "정수로(${1:실수값})" },
+  { label: "실수로", detail: "실수로(값: 정수) -> 실수", snippet: "실수로(${1:정수값})" },
+];
+const STRING_FUNCTIONS = [
+  {
+    label: "문자열길이",
+    detail: "문자열길이(값: 문자열) -> 정수",
+    snippet: "문자열길이(${1:문자열})",
+  },
+  {
+    label: "문자열포함",
+    detail: "문자열포함(값: 문자열, 부분: 문자열) -> 불리언",
+    snippet: "문자열포함(${1:문자열}, ${2:부분문자열})",
+  },
+  {
+    label: "문자열시작",
+    detail: "문자열시작(값: 문자열, 접두사: 문자열) -> 불리언",
+    snippet: "문자열시작(${1:문자열}, ${2:접두사})",
+  },
+  {
+    label: "문자열끝",
+    detail: "문자열끝(값: 문자열, 접미사: 문자열) -> 불리언",
+    snippet: "문자열끝(${1:문자열}, ${2:접미사})",
+  },
+];
 
 function activate(context, vscodeApi, spawnProcess = spawn) {
   const vscode = vscodeApi ?? require("vscode");
@@ -110,6 +163,42 @@ function activate(context, vscodeApi, spawnProcess = spawn) {
 
   if (vscode.languages && vscode.workspace.onDidChangeTextDocument) {
     registerEditorDiagnostics(context, vscode, output, spawnProcess);
+  }
+  if (vscode.languages?.registerCompletionItemProvider) {
+    const completionProvider = {
+      provideCompletionItems(document) {
+        const configuration = vscode.workspace.getConfiguration("geulion", document.uri);
+        const version = configuration.get("languageVersion", "0.1");
+        const functions = [...CORE_FUNCTIONS];
+        if (version === "0.2" || version === "0.3") functions.push(...STRING_FUNCTIONS);
+        const items = KEYWORDS.map((label) => {
+          const item = new vscode.CompletionItem(label, vscode.CompletionItemKind.Keyword);
+          item.detail = "GEULION 예약어";
+          return item;
+        });
+        for (const entry of functions) {
+          const item = new vscode.CompletionItem(entry.label, vscode.CompletionItemKind.Function);
+          item.detail = entry.detail;
+          item.insertText = new vscode.SnippetString(entry.snippet);
+          items.push(item);
+        }
+        if (version === "0.3") {
+          const item = new vscode.CompletionItem(
+            "공개 함수 선언",
+            vscode.CompletionItemKind.Snippet,
+          );
+          item.detail = "v0.3 공개 함수 선언";
+          item.insertText = new vscode.SnippetString(
+            "공개 함수 ${1:이름}() -> ${2:없음} {\n\t$0\n}",
+          );
+          items.push(item);
+        }
+        return items;
+      },
+    };
+    context.subscriptions.push(
+      vscode.languages.registerCompletionItemProvider("geulion", completionProvider),
+    );
   }
   return { output };
 }
