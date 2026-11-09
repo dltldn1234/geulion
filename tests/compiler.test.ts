@@ -18,7 +18,28 @@ function exampleSource(id: string): string {
   return source;
 }
 
-function input(path: string, source: string, languageVersion?: "0.1" | "0.2") {
+type TestSourceInput = { path: string; source: Uint8Array };
+
+function input(path: string, source: string): TestSourceInput;
+function input(
+  path: string,
+  source: string,
+  languageVersion: "0.1" | "0.2",
+): TestSourceInput & {
+  languageVersion: "0.1" | "0.2";
+};
+function input(
+  path: string,
+  source: string,
+  languageVersion: "0.3",
+): TestSourceInput & {
+  languageVersion: "0.3";
+};
+function input(
+  path: string,
+  source: string,
+  languageVersion?: "0.1" | "0.2" | "0.3",
+): TestSourceInput & { languageVersion?: "0.1" | "0.2" | "0.3" } {
   return {
     path,
     source: new TextEncoder().encode(source),
@@ -89,6 +110,20 @@ describe("compiler integration and official conformance", () => {
     expect(executed.stderr).toBe("");
   });
 
+  it("checks v0.3 public exports and refuses to emit them for the Node target", () => {
+    const source = exampleSource("P-102");
+    const sourceInput = input("P-102.geul", source, "0.3");
+    const checked = checkSource(sourceInput);
+    expect(checked.success).toBe(true);
+    if (checked.success) {
+      expect(checked.program.exports.map(({ name }) => name)).toEqual(["합계"]);
+    }
+
+    const compiled = compileSource(sourceInput as unknown as Parameters<typeof compileSource>[0]);
+    expect(compiled.success).toBe(false);
+    expect(compiled.diagnostics[0]).toMatchObject({ code: "GE2004", phase: "resolve" });
+  });
+
   it.each([
     ["N-001", "GE2003", "resolve"],
     ["N-002", "GE3001", "type"],
@@ -99,6 +134,7 @@ describe("compiler integration and official conformance", () => {
     ["N-007", "GE3005", "type"],
     ["N-008", "GE1001", "parse"],
     ["N-009", "GE2001", "resolve"],
+    ["N-010", "GE2004", "resolve"],
   ])("rejects official %s with %s and emits no JavaScript", (id, code, phase) => {
     const sourceInput = input(`${id}.geul`, exampleSource(id));
     const checked = checkSource(sourceInput);
@@ -111,6 +147,16 @@ describe("compiler integration and official conformance", () => {
       expect("code" in result).toBe(false);
       expect("program" in result).toBe(false);
     }
+  });
+
+  it("rejects the official public entrypoint example in v0.3", () => {
+    const result = checkSource(input("N-011.geul", exampleSource("N-011"), "0.3"));
+    expect(result.success).toBe(false);
+    expect(result.diagnostics[0]).toMatchObject({
+      code: "GE2003",
+      phase: "resolve",
+      path: "N-011.geul",
+    });
   });
 
   it("stops after UTF-8 or lexical failure without adding parser/semantic errors or code", () => {
