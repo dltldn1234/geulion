@@ -6,12 +6,25 @@ describe("AST and token infrastructure", () => {
   it("visits a typed AST in structural order", () => {
     const source = SourceFile.fromText("empty.geul", "");
     const span = source.span(0, 0);
-    const program: ProgramNode = { kind: "Program", functions: [], span };
+    const program: ProgramNode = {
+      kind: "Program",
+      imports: [
+        {
+          kind: "ImportDeclaration",
+          path: "./lib.geul",
+          pathSpan: span,
+          alias: { raw: "lib", normalized: "lib", span },
+          span,
+        },
+      ],
+      functions: [],
+      span,
+    };
     const visited: string[] = [];
 
     visitAst(program, (node) => visited.push(node.kind));
 
-    expect(visited).toEqual(["Program"]);
+    expect(visited).toEqual(["Program", "ImportDeclaration"]);
     expect(program.span).toEqual(span);
   });
 

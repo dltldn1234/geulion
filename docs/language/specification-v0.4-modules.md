@@ -8,7 +8,7 @@ The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, and **MAY** are 
 
 - v0.4 is opt-in through `--language-version 0.4`; the default remains v0.1.
 - A v0.4 project uses v0.4 for every source in the entry module's reachable import closure. The language version is selected once per project; source files MUST NOT select a different version independently.
-- v0.1, v0.2, and v0.3 retain their existing single-source behavior. An import declaration is rejected under those versions. Existing single-source `checkSource` and `compileSource` calls keep their existing contracts.
+- v0.1, v0.2, and v0.3 retain their existing single-source behavior. Import and qualified-call syntax is rejected by their single-source semantic APIs. Existing single-source `checkSource` and `compileSource` calls keep their existing contracts.
 - A project API MUST receive an explicit entry path, project root, version, and finite source provider or source map. Compiler APIs MUST NOT read files implicitly. Filesystem access belongs to the CLI or an embedding host.
 - Tokenization remains version-neutral. `가져오기` is contextual syntax only at the start of a top-level module declaration; elsewhere it retains the existing identifier behavior where the grammar permits an identifier.
 
@@ -125,7 +125,7 @@ The following codes are reserved for v0.4 module diagnostics and MUST NOT be reu
 | `GE2008` | resolve | Duplicate module import, duplicate alias, or alias collision with a declaration or prelude name.                                        |
 | `GE2009` | resolve | Qualified call uses an unknown alias, unknown export, or private function.                                                              |
 | `GE2010` | resolve | A non-entry module declares the reserved `시작` function, or the entrypoint is missing, duplicated, public, or has the wrong signature. |
-| `GE2011` | resolve | An import declaration is used while the selected language version is v0.1–v0.3.                                                         |
+| `GE2011` | resolve | A v0.4 import or qualified-call form is passed to a v0.1–v0.3 single-source semantic API.                                               |
 
 A malformed quote or invalid source encoding continues to use the existing lexical diagnostic. Ordinary invalid token ordering outside import placement continues to use the existing parser diagnostics. A type mismatch in a qualified call uses the existing type diagnostic.
 

@@ -51,6 +51,7 @@ export const TokenKind = {
   RightBrace: "}",
   Colon: ":",
   Comma: ",",
+  Dot: ".",
   Semicolon: ";",
   Newline: "Newline",
   EndOfFile: "EndOfFile",
@@ -132,6 +133,7 @@ export type DelimiterTokenKind =
   | typeof TokenKind.RightBrace
   | typeof TokenKind.Colon
   | typeof TokenKind.Comma
+  | typeof TokenKind.Dot
   | typeof TokenKind.Semicolon;
 
 export interface KeywordToken extends TokenBase {

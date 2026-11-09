@@ -111,6 +111,20 @@ describe("compiler integration and official conformance", () => {
     expect(executed.stderr).toBe("");
   });
 
+  it("rejects v0.4 module syntax through the single-source compiler APIs", () => {
+    const source = `가져오기 "./수학.geul" 별칭 수학
+함수 시작() -> 없음 { 출력(수학.더하기(1, 2)) }`;
+    const sourceInput = input("main.geul", source);
+
+    const checked = checkSource(sourceInput);
+    expect(checked.success).toBe(false);
+    expect(checked.diagnostics.map(({ code }) => code)).toContain("GE2011");
+
+    const compiled = compileSource({ ...sourceInput, target: "node" });
+    expect(compiled.success).toBe(false);
+    expect(compiled.diagnostics.map(({ code }) => code)).toContain("GE2011");
+  });
+
   it("checks v0.3 public exports and refuses to emit them for the Node target", () => {
     const source = exampleSource("P-102");
     const sourceInput = input("P-102.geul", source, "0.3");

@@ -122,6 +122,8 @@ export function generateJavaScript(
       case "IndexExpression":
         return `_g.index(${expression(node.target)}, ${expression(node.index)})`;
       case "CallExpression": {
+        if (node.namespace !== null)
+          throw new Error("Project-qualified calls require project compilation");
         const id = symbolId(node.callee);
         const symbol = program.symbols.get(id);
         if (!symbol || (symbol.kind !== "function" && symbol.kind !== "prelude"))

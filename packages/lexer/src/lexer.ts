@@ -92,6 +92,7 @@ const singleCharacterTokens = new Map<string, OperatorTokenKind | DelimiterToken
   ["}", TokenKind.RightBrace],
   [":", TokenKind.Colon],
   [",", TokenKind.Comma],
+  [".", TokenKind.Dot],
   [";", TokenKind.Semicolon],
 ]);
 
@@ -529,6 +530,18 @@ export function lex(source: SourceFile): LexResult {
     if (operatorKind !== undefined) {
       emit(operatorKind, current, current + 2);
       current += 2;
+      continue;
+    }
+
+    if (character === "." && isAsciiDigit(characters[current + 1])) {
+      report(
+        "GE0001",
+        "실수 리터럴은 소수점 앞에 숫자가 필요합니다.",
+        "`.5` 대신 `0.5`처럼 정수부를 작성하세요.",
+        current,
+        current + 1,
+      );
+      current += 1;
       continue;
     }
 

@@ -8,7 +8,16 @@ export interface IdentifierName {
 
 export interface ProgramNode {
   readonly kind: "Program";
+  readonly imports: readonly ImportDeclarationNode[];
   readonly functions: readonly FunctionDeclarationNode[];
+  readonly span: SourceSpan;
+}
+
+export interface ImportDeclarationNode {
+  readonly kind: "ImportDeclaration";
+  readonly path: string;
+  readonly pathSpan: SourceSpan;
+  readonly alias: IdentifierName;
   readonly span: SourceSpan;
 }
 
@@ -180,6 +189,7 @@ export interface BinaryExpressionNode {
 
 export interface CallExpressionNode {
   readonly kind: "CallExpression";
+  readonly namespace: IdentifierName | null;
   readonly callee: IdentifierName;
   readonly arguments: readonly ExpressionNode[];
   readonly span: SourceSpan;
@@ -236,6 +246,7 @@ export type ExpressionNode =
 
 export type AstNode =
   | ProgramNode
+  | ImportDeclarationNode
   | FunctionDeclarationNode
   | ParameterNode
   | TypeNode
@@ -250,7 +261,10 @@ export function visitAst(node: AstNode, visitor: AstVisitor): void {
   visitor(node);
   switch (node.kind) {
     case "Program":
+      node.imports.forEach((child) => visitAst(child, visitor));
       node.functions.forEach((child) => visitAst(child, visitor));
+      return;
+    case "ImportDeclaration":
       return;
     case "FunctionDeclaration":
       node.parameters.forEach((child) => visitAst(child, visitor));
