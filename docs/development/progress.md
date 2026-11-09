@@ -10,7 +10,7 @@
 - Latest verified main SHA: `852915e29178de5475a072a75e2201fa2dc0a36c` (2026-11-09)
 - Current unique commits reachable from `origin/main`: 97
 - New commits reachable from main since baseline: 39
-- Local unmerged Issue #51 commits: 0
+- Local unmerged Issue #51 commits: 2 (`779af3a`, `07c312e`)
 - Remaining to minimum 300: 203
 - Remaining to primary 400: 303
 - Remaining to extended 500: 403
@@ -26,6 +26,7 @@
 - Issue #45 implements contextual `공개 함수` parsing, v0.3 public signature metadata, and the v0.3 `check` selector. PR #46 merged with Merge Commit `de9df5b`; CI run `42538207631` passed.
 - Issue #47 adds browser-target modules, public export metadata and invocation, tagged value validation, browser target selection for `emit-js`/`build`, diagnostics, tests, and documentation. PR #48 merged with Merge Commit `1b0f3f7`; CI run `42540812517` passed.
 - Issue #49 adds a platform-neutral v0.3 host API package with bounded save-envelope encode/decode, strict UTF-8 and JSON duplicate-key rejection, value validation, deterministic dictionary encoding, and typed error outcomes. PR #50 merged with Merge Commit `852915e`; CI run `42542499311` passed.
+- Issue #51 adds an injected byte-storage repository with serialized load/save/transact operations, absent-vs-`none` distinction, typed adapter/storage/codec failures, cache updates only after successful writes, tests, and lifecycle documentation. Local commits `779af3a` and `07c312e` are awaiting PR/CI.
 
 ## Verification
 
@@ -38,6 +39,7 @@
 - Issue #45 local verification passed: full `pnpm test` (13 files / 179 tests), `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, and `git diff --check`. PR #46 merged at `de9df5bc305966999609c32cc676f0fe59574df6` after CI run `42538207631` passed.
 - Issue #47 local verification passed: `pnpm typecheck`, `pnpm test` (13 files / 188 tests), `pnpm lint`, `pnpm format:check`, and `git diff --check`. Focused tests passed (3 files / 70 tests); the latest codec conformance tests passed (1 file / 31 tests).
 - Issue #49 local verification passed: `pnpm typecheck`, `pnpm test` (14 files / 200 tests), `pnpm lint`, `pnpm format:check`, and `git diff --check`. Focused host API tests passed (1 file / 12 tests).
+- Issue #51 local verification passed: `pnpm typecheck`, `pnpm test` (14 files / 205 tests), `pnpm lint`, `pnpm format:check`, and `git diff --check`. Focused host API tests passed (1 file / 17 tests).
 
 ## Known limitations
 
@@ -47,7 +49,7 @@
 
 ## Next
 
-1. Finish Issue #51 persistence adapter implementation, validation, and PR/CI flow.
+1. Push Issue #51 and complete PR/CI/merge flow.
 2. Build the Idle UI and game logic against the merged v0.3 browser, persistence, and ABI contracts.
 
 ## Commit growth tracking
