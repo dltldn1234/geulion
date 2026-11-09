@@ -243,6 +243,39 @@ describe("GEULION Language Server Protocol", () => {
     }
   });
 
+  it("deduplicates declarations across overlapping workspace roots", async () => {
+    const root = await mkdtemp(join(tmpdir(), "geulion-lsp-overlapping-roots-"));
+    const nested = join(root, "nested");
+    const client = new LspClient();
+    try {
+      await mkdir(nested);
+      await writeFile(join(nested, "shared.geul"), "함수 한파일() -> 없음 { }");
+      const rootUri = pathToFileURL(root).toString();
+      const nestedUri = pathToFileURL(nested).toString();
+      const initialized = await client.request("initialize", {
+        capabilities: {},
+        workspaceFolders: [
+          { uri: rootUri, name: "Root" },
+          { uri: nestedUri, name: "Nested" },
+          { uri: rootUri, name: "Duplicate root" },
+        ],
+      });
+      expect(initialized.error).toBeUndefined();
+      client.notification("initialized");
+
+      const response = await client.request("workspace/symbol", { query: "한파일" });
+      expect(response.result).toMatchObject([
+        {
+          name: "한파일",
+          location: { uri: pathToFileURL(join(nested, "shared.geul")).toString() },
+        },
+      ]);
+    } finally {
+      await client.close();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("uses rootUri when workspaceFolders is empty and isolates unreadable files", async () => {
     const root = await mkdtemp(join(tmpdir(), "geulion-lsp-root-"));
     const client = new LspClient();
