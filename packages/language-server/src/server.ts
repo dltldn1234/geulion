@@ -3,7 +3,14 @@ import { readdirSync, readFileSync } from "node:fs";
 import { isAbsolute, join, relative, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { checkSource, parseSource, type LanguageVersion } from "@geulion/compiler";
-import type { Diagnostic, SourceSpan, TypeNode } from "@geulion/ast";
+import type {
+  CallExpressionNode,
+  Diagnostic,
+  IdentifierName,
+  ProgramNode,
+  SourceSpan,
+  TypeNode,
+} from "@geulion/ast";
 import { TokenKind } from "@geulion/lexer";
 
 type JsonObject = Record<string, unknown>;
@@ -119,6 +126,7 @@ type GeulTypeShape =
   | { kind: "primitive"; name: string }
   | { kind: "collection"; name: string; element: GeulTypeShape };
 const documents = new Map<string, Document>();
+const workspaceProgramCache = new Map<string, { text: string; program: ProgramNode | undefined }>();
 const semanticTokenSnapshots = new Map<string, SemanticTokenSnapshot[]>();
 const MAX_SEMANTIC_TOKEN_SNAPSHOTS = 4;
 const IGNORED_WORKSPACE_DIRECTORIES = new Set([".git", "node_modules", "dist", "coverage"]);
@@ -704,7 +712,87 @@ function workspaceSymbolDocuments(): Map<string, Document> {
   for (const [uri, document] of overlays) {
     if (!visited.has(uri)) result.set(document.uri, document);
   }
+  for (const uri of workspaceProgramCache.keys()) {
+    if (!result.has(uri)) workspaceProgramCache.delete(uri);
+  }
   return result;
+}
+
+function workspaceProgram(document: Document): ProgramNode | undefined {
+  const cached = workspaceProgramCache.get(document.uri);
+  if (cached?.text === document.text) return cached.program;
+  const parsed = parseSource({
+    path: documentPath(document.uri),
+    source: new TextEncoder().encode(document.text),
+  });
+  const program = parsed.success ? parsed.ast : undefined;
+  workspaceProgramCache.set(document.uri, { text: document.text, program });
+  return program;
+}
+
+type WorkspaceFunctionReference = {
+  readonly document: Document;
+  readonly name: IdentifierName;
+  readonly declaration: boolean;
+};
+
+function visitCallExpressions(value: unknown, visit: (call: CallExpressionNode) => void): void {
+  if (Array.isArray(value)) {
+    value.forEach((child) => visitCallExpressions(child, visit));
+    return;
+  }
+  if (typeof value !== "object" || value === null) return;
+  if ("kind" in value && value.kind === "CallExpression") visit(value as CallExpressionNode);
+  Object.values(value).forEach((child) => visitCallExpressions(child, visit));
+}
+
+function workspaceFunctionReferences(
+  documentsByUri: Map<string, Document>,
+  name: string,
+): WorkspaceFunctionReference[] {
+  const references: WorkspaceFunctionReference[] = [];
+  for (const document of documentsByUri.values()) {
+    const program = workspaceProgram(document);
+    if (!program) continue;
+    for (const declaration of program.functions) {
+      if (declaration.name.normalized === name)
+        references.push({ document, name: declaration.name, declaration: true });
+    }
+    visitCallExpressions(program, (call) => {
+      if (call.callee.normalized === name)
+        references.push({ document, name: call.callee, declaration: false });
+    });
+  }
+  return references;
+}
+
+function workspaceFunctionAt(
+  document: Document,
+  offset: number,
+): { readonly name: string; readonly declaration: boolean } | undefined {
+  const program = workspaceProgram(document);
+  if (!program) return undefined;
+  const containsOffset = (span: SourceSpan) =>
+    offset >= span.start.utf16Offset && offset < span.end.utf16Offset;
+  for (const declaration of program.functions) {
+    if (containsOffset(declaration.name.span))
+      return { name: declaration.name.normalized, declaration: true };
+  }
+  let match: { name: string; declaration: boolean } | undefined;
+  visitCallExpressions(program, (call) => {
+    if (containsOffset(call.callee.span))
+      match = { name: call.callee.normalized, declaration: false };
+  });
+  return match;
+}
+
+function uniqueWorkspaceFunction(
+  documentsByUri: Map<string, Document>,
+  name: string,
+): WorkspaceFunctionReference[] | undefined {
+  const references = workspaceFunctionReferences(documentsByUri, name);
+  const declarations = references.filter((reference) => reference.declaration);
+  return declarations.length === 1 ? references : undefined;
 }
 
 function currentAnalysis(document: Document) {
@@ -992,6 +1080,29 @@ function handleRequest(method: string, params: JsonObject): unknown {
       return [...match.analysis.program.references]
         .filter(([, symbolId]) => symbolId === match.symbolId)
         .map(([reference]) => ({ range: sourceRange(reference.span, document.text) }));
+    }
+    if (!match && (method === "textDocument/definition" || method === "textDocument/references")) {
+      const target = workspaceFunctionAt(document, sourceOffset(document.text, position));
+      const references = target
+        ? uniqueWorkspaceFunction(workspaceSymbolDocuments(), target.name)
+        : undefined;
+      if (!references) return method === "textDocument/references" ? [] : null;
+      const declaration = references.find((reference) => reference.declaration);
+      if (!declaration) return method === "textDocument/references" ? [] : null;
+      if (method === "textDocument/definition") {
+        return {
+          uri: declaration.document.uri,
+          range: sourceRange(declaration.name.span, declaration.document.text),
+        };
+      }
+      const context = getObject(params, "context");
+      const includeDeclaration = context?.includeDeclaration === true;
+      return references
+        .filter((reference) => includeDeclaration || !reference.declaration)
+        .map((reference) => ({
+          uri: reference.document.uri,
+          range: sourceRange(reference.name.span, reference.document.text),
+        }));
     }
     if (!match || !match.symbol.span) return method === "textDocument/references" ? [] : null;
     const location = { uri: document.uri, range: sourceRange(match.symbol.span, document.text) };

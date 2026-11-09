@@ -276,6 +276,72 @@ describe("GEULION Language Server Protocol", () => {
     }
   });
 
+  it("navigates to a unique function declaration across workspace files", async () => {
+    const root = await mkdtemp(join(tmpdir(), "geulion-lsp-cross-file-symbols-"));
+    const libraryPath = join(root, "library.geul");
+    const mainPath = join(root, "main.geul");
+    const libraryText = "함수 도우미(값: 정수) -> 정수 { 반환 값 }";
+    const mainText = "함수 시작() -> 없음 { 출력(도우미(3)) }";
+    const libraryUri = pathToFileURL(libraryPath).toString();
+    const mainUri = pathToFileURL(mainPath).toString();
+    const client = new LspClient();
+    try {
+      await writeFile(libraryPath, libraryText);
+      await writeFile(mainPath, mainText);
+      const initialized = await client.request("initialize", {
+        capabilities: {},
+        workspaceFolders: [{ uri: pathToFileURL(root).toString(), name: "GEULION" }],
+      });
+      expect(initialized.error).toBeUndefined();
+      client.notification("initialized");
+      client.notificationBatch(
+        {
+          method: "textDocument/didOpen",
+          params: {
+            textDocument: { uri: libraryUri, languageId: "geulion", version: 1, text: libraryText },
+          },
+        },
+        {
+          method: "textDocument/didOpen",
+          params: {
+            textDocument: { uri: mainUri, languageId: "geulion", version: 1, text: mainText },
+          },
+        },
+      );
+
+      const definition = await client.request("textDocument/definition", {
+        textDocument: { uri: mainUri },
+        position: { line: 0, character: mainText.indexOf("도우미") },
+      });
+      expect(definition.result).toMatchObject({
+        uri: libraryUri,
+        range: { start: { line: 0, character: libraryText.indexOf("도우미") } },
+      });
+
+      const references = await client.request("textDocument/references", {
+        textDocument: { uri: libraryUri },
+        position: { line: 0, character: libraryText.indexOf("도우미") },
+        context: { includeDeclaration: false },
+      });
+      expect(references.result).toMatchObject([
+        {
+          uri: mainUri,
+          range: { start: { line: 0, character: mainText.indexOf("도우미") } },
+        },
+      ]);
+
+      await writeFile(join(root, "duplicate.geul"), "함수 도우미(값: 정수) -> 정수 { 반환 값 }");
+      const ambiguous = await client.request("textDocument/definition", {
+        textDocument: { uri: mainUri },
+        position: { line: 0, character: mainText.indexOf("도우미") },
+      });
+      expect(ambiguous.result).toBeNull();
+    } finally {
+      await client.close();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("uses rootUri when workspaceFolders is empty and isolates unreadable files", async () => {
     const root = await mkdtemp(join(tmpdir(), "geulion-lsp-root-"));
     const client = new LspClient();
