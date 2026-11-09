@@ -4,6 +4,7 @@ import { isAbsolute, join, relative, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { checkSource, parseSource, type LanguageVersion } from "@geulion/compiler";
 import type { Diagnostic, SourceSpan, TypeNode } from "@geulion/ast";
+import { TokenKind } from "@geulion/lexer";
 
 type JsonObject = Record<string, unknown>;
 type Position = { line: number; character: number };
@@ -255,6 +256,163 @@ function sourceRange(span: SourceSpan, text: string): Range {
     start: positionAtOffset(text, span.start.utf16Offset),
     end: positionAtOffset(text, span.end.utf16Offset),
   };
+}
+
+type SemanticToken = { line: number; character: number; length: number; type: number };
+
+const SEMANTIC_TOKEN_TYPES = ["keyword", "string", "number", "operator", "punctuation", "comment"];
+
+function commentRanges(text: string): { start: number; end: number }[] {
+  const comments: { start: number; end: number }[] = [];
+  let index = 0;
+  while (index < text.length) {
+    if (text[index] === '"') {
+      index += 1;
+      while (index < text.length) {
+        if (text[index] === "\\") {
+          if (text[index + 1] === "\r" || text[index + 1] === "\n") {
+            index += 1;
+            break;
+          }
+          index += 2;
+        } else if (text[index] === '"') {
+          index += 1;
+          break;
+        } else if (text[index] === "\r" || text[index] === "\n") break;
+        else index += 1;
+      }
+      continue;
+    }
+    if (text.startsWith("//", index)) {
+      const start = index;
+      index += 2;
+      while (index < text.length && text[index] !== "\r" && text[index] !== "\n") index += 1;
+      comments.push({ start, end: index });
+      continue;
+    }
+    if (text.startsWith("/*", index)) {
+      const start = index;
+      const close = text.indexOf("*/", index + 2);
+      const end = close < 0 ? text.length : close + 2;
+      let segmentStart = start;
+      for (let cursor = start; cursor < end; cursor += 1) {
+        if (text[cursor] !== "\r" && text[cursor] !== "\n") continue;
+        if (segmentStart < cursor) comments.push({ start: segmentStart, end: cursor });
+        if (text[cursor] === "\r" && text[cursor + 1] === "\n") cursor += 1;
+        segmentStart = cursor + 1;
+      }
+      if (segmentStart < end) comments.push({ start: segmentStart, end });
+      index = end;
+      continue;
+    }
+    index += 1;
+  }
+  return comments;
+}
+
+function semanticTokenData(document: Document): number[] {
+  const parsed = parseSource({
+    path: documentPath(document.uri),
+    source: new TextEncoder().encode(document.text),
+  });
+  const bomOffset = document.text.startsWith("\uFEFF") ? 1 : 0;
+  const tokens: SemanticToken[] = [];
+  const keywordKinds = new Set<string>([
+    TokenKind.Constant,
+    TokenKind.Variable,
+    TokenKind.Function,
+    TokenKind.Return,
+    TokenKind.If,
+    TokenKind.Else,
+    TokenKind.While,
+    TokenKind.Break,
+    TokenKind.Continue,
+    TokenKind.And,
+    TokenKind.Or,
+    TokenKind.Not,
+    TokenKind.True,
+    TokenKind.False,
+    TokenKind.IntegerType,
+    TokenKind.RealType,
+    TokenKind.StringType,
+    TokenKind.BooleanType,
+    TokenKind.UnitType,
+    TokenKind.ListType,
+    TokenKind.DictionaryType,
+    TokenKind.OptionType,
+    TokenKind.Some,
+    TokenKind.None,
+  ]);
+  const operatorKinds = new Set<string>([
+    TokenKind.Arrow,
+    TokenKind.EqualEqual,
+    TokenKind.NotEqual,
+    TokenKind.LessEqual,
+    TokenKind.GreaterEqual,
+    TokenKind.Coalesce,
+    TokenKind.Assign,
+    TokenKind.Plus,
+    TokenKind.Minus,
+    TokenKind.Star,
+    TokenKind.Slash,
+    TokenKind.Percent,
+    TokenKind.Less,
+    TokenKind.Greater,
+  ]);
+  for (const token of parsed.tokens) {
+    let type: number | undefined;
+    if (keywordKinds.has(token.kind)) type = 0;
+    else if (token.kind === TokenKind.StringLiteral) type = 1;
+    else if (token.kind === TokenKind.IntegerLiteral || token.kind === TokenKind.RealLiteral)
+      type = 2;
+    else if (operatorKinds.has(token.kind)) type = 3;
+    else if (
+      token.kind === TokenKind.LeftParen ||
+      token.kind === TokenKind.RightParen ||
+      token.kind === TokenKind.LeftBracket ||
+      token.kind === TokenKind.RightBracket ||
+      token.kind === TokenKind.LeftBrace ||
+      token.kind === TokenKind.RightBrace ||
+      token.kind === TokenKind.Colon ||
+      token.kind === TokenKind.Comma ||
+      token.kind === TokenKind.Semicolon
+    )
+      type = 4;
+    if (type === undefined) continue;
+    const range = {
+      start: positionAtOffset(document.text, token.span.start.utf16Offset + bomOffset),
+      end: positionAtOffset(document.text, token.span.end.utf16Offset + bomOffset),
+    };
+    tokens.push({
+      line: range.start.line,
+      character: range.start.character,
+      length: range.end.character - range.start.character,
+      type,
+    });
+  }
+  for (const comment of commentRanges(document.text)) {
+    const start = positionAtOffset(document.text, comment.start);
+    const end = positionAtOffset(document.text, comment.end);
+    if (start.line === end.line && end.character > start.character)
+      tokens.push({
+        line: start.line,
+        character: start.character,
+        length: end.character - start.character,
+        type: 5,
+      });
+  }
+  tokens.sort((left, right) => left.line - right.line || left.character - right.character);
+  const data: number[] = [];
+  let previousLine = 0;
+  let previousCharacter = 0;
+  for (const token of tokens) {
+    const deltaLine = token.line - previousLine;
+    const deltaCharacter = deltaLine === 0 ? token.character - previousCharacter : token.character;
+    data.push(deltaLine, deltaCharacter, token.length, token.type, 0);
+    previousLine = token.line;
+    previousCharacter = token.character;
+  }
+  return data;
 }
 
 function sourceOffset(text: string, position: Position): number {
@@ -581,6 +739,10 @@ function handleRequest(method: string, params: JsonObject): unknown {
         documentHighlightProvider: true,
         documentSymbolProvider: true,
         foldingRangeProvider: true,
+        semanticTokensProvider: {
+          legend: { tokenTypes: SEMANTIC_TOKEN_TYPES, tokenModifiers: [] },
+          full: true,
+        },
         workspaceSymbolProvider: true,
         referencesProvider: true,
         renameProvider: { prepareProvider: true },
@@ -739,6 +901,10 @@ function handleRequest(method: string, params: JsonObject): unknown {
         },
       ];
     });
+  }
+  if (method === "textDocument/semanticTokens/full") {
+    const document = getDocument(params);
+    return { data: document ? semanticTokenData(document) : [] };
   }
   if (method === "workspace/symbol") {
     const query = getString(params, "query") ?? "";
