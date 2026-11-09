@@ -142,11 +142,11 @@ describe("GEULION lexer", () => {
 
   it("uses longest-match operators and emits logical line tokens", () => {
     const result = lexText(
-      "-> == != <= >= ?? = + - * / % < >\n/* block\r\ncomment */ // line\rname",
+      "-> == != <= >= ?? = + - * / % < > .\n/* block\r\ncomment */ // line\rname",
     );
     expect(result.success).toBe(true);
     if (!result.success) return;
-    expect(result.tokens.slice(0, 14).map((token) => token.kind)).toEqual([
+    expect(result.tokens.slice(0, 15).map((token) => token.kind)).toEqual([
       TokenKind.Arrow,
       TokenKind.EqualEqual,
       TokenKind.NotEqual,
@@ -161,10 +161,31 @@ describe("GEULION lexer", () => {
       TokenKind.Percent,
       TokenKind.Less,
       TokenKind.Greater,
+      TokenKind.Dot,
     ]);
     expect(result.tokens.filter(({ kind }) => kind === TokenKind.Newline)).toHaveLength(3);
     expect(result.tokens.at(-2)).toMatchObject({ kind: TokenKind.Identifier, rawLexeme: "name" });
   });
+
+  it("distinguishes qualified-name dots from decimal points", () => {
+    const result = lexText("수학.더하기(1.25, 값)");
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.tokens.map(({ kind }) => kind)).toEqual([
+      TokenKind.Identifier,
+      TokenKind.Dot,
+      TokenKind.Identifier,
+      TokenKind.LeftParen,
+      TokenKind.RealLiteral,
+      TokenKind.Comma,
+      TokenKind.Identifier,
+      TokenKind.RightParen,
+      TokenKind.EndOfFile,
+    ]);
+  });
+  const leadingDotDecimal = lexText(".5");
+  expect(leadingDotDecimal.success).toBe(false);
+  if (!leadingDotDecimal.success) expect(leadingDotDecimal.diagnostics[0]?.code).toBe("GE0001");
 
   it("does not nest block comments and preserves comment line breaks", () => {
     const result = lexText("/* outer\n/* nested */ x */");
