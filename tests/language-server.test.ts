@@ -585,6 +585,7 @@ describe("GEULION Language Server Protocol", () => {
         "definitionProvider",
         "documentHighlightProvider",
         "documentSymbolProvider",
+        "foldingRangeProvider",
         "referencesProvider",
       ])
         expect(result.capabilities).toHaveProperty(provider);
@@ -943,6 +944,74 @@ describe("GEULION Language Server Protocol", () => {
         const closed = await client.request("textDocument/documentHighlight", {
           textDocument: { uri },
           position: { line: 0, character: 0 },
+        });
+        expect(closed.result).toEqual([]);
+      } finally {
+        await client.close();
+      }
+    },
+  );
+
+  it.each(["utf-8", "utf-16", "utf-32"] as const)(
+    "returns multiline function folding ranges using %s positions",
+    async (encoding) => {
+      const client = new LspClient();
+      const uri = `file:///workspace/folding-${encoding}.geul`;
+      const text =
+        "함수 한줄() -> 없음 { 출력(1) }\n함수 여러줄() -> 없음 {\n출력(1)\n}\n함수 시작() -> 없음 {\n여러줄()\n}";
+      try {
+        const initialized = await client.request("initialize", {
+          capabilities: { general: { positionEncodings: [encoding] } },
+        });
+        const capabilities = (initialized.result as { capabilities: Record<string, unknown> })
+          .capabilities;
+        expect(capabilities.positionEncoding).toBe(encoding);
+        expect(capabilities.foldingRangeProvider).toBe(true);
+        client.notification("initialized");
+        client.notification("textDocument/didOpen", {
+          textDocument: { uri, languageId: "geulion", version: 1, text },
+        });
+
+        const ranges = await client.request("textDocument/foldingRange", {
+          textDocument: { uri },
+        });
+        expect(ranges.result).toEqual([
+          {
+            startLine: 1,
+            startCharacter: 0,
+            endLine: 3,
+            endCharacter: 1,
+            kind: "region",
+          },
+          {
+            startLine: 4,
+            startCharacter: 0,
+            endLine: 6,
+            endCharacter: 1,
+            kind: "region",
+          },
+        ]);
+
+        client.notification("textDocument/didChange", {
+          textDocument: { uri, version: 2 },
+          contentChanges: [{ text: "함수 시작() -> 없음 { 출력(1) }" }],
+        });
+        const changed = await client.request("textDocument/foldingRange", {
+          textDocument: { uri },
+        });
+        expect(changed.result).toEqual([]);
+
+        client.notification("textDocument/didChange", {
+          textDocument: { uri, version: 3 },
+          contentChanges: [{ text: "함수 시작() -> 없음 {" }],
+        });
+        const invalid = await client.request("textDocument/foldingRange", {
+          textDocument: { uri },
+        });
+        expect(invalid.result).toEqual([]);
+        client.notification("textDocument/didClose", { textDocument: { uri } });
+        const closed = await client.request("textDocument/foldingRange", {
+          textDocument: { uri },
         });
         expect(closed.result).toEqual([]);
       } finally {
