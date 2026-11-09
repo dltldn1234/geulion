@@ -10,7 +10,7 @@
 - Latest verified main SHA: `77ae9fe05bb7b4b711fdc642b90f708506d9eb12` (2026-11-09)
 - Current unique commits reachable from main: 103
 - New commits reachable from main since baseline: 45
-- Issue #53 local unmerged commits: 0 (implementation in progress)
+- Issue #53 local unmerged commits: 4 (`ae1ce8f`, `f7fa459`, `33a2d38`, `6cc4657`)
 - Remaining to minimum 300: 197
 - Remaining to primary 400: 297
 - Remaining to extended 500: 397
@@ -50,7 +50,7 @@
 
 ## Next
 
-1. Complete Issue #53 implementation, PR, CI, and merge.
+1. Complete Issue #53 PR #54 CI, review, and merge.
 2. Continue Phase 7 with remaining gameplay, balance, and runtime/browser verification slices.
 
 ## Commit growth tracking
