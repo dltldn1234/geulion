@@ -141,7 +141,7 @@ describe("GEULION VS Code language package", () => {
       notIn: ["string", "comment"],
     });
     expect(snippets["시작 함수"]!.prefix).toContain("시작");
-    expect(snippets["공개 함수 선언"]!.body[0]!).toContain("공개 함수");
+    expect(snippets["공개 함수 선언"]).toBeUndefined();
     expect(snippets["조건문"]!.body[0]!).toContain("만약");
     expect(snippets["반복문"]!.body[0]!).toContain("동안");
   });
