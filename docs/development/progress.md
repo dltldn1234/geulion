@@ -2,20 +2,20 @@
 
 ## Current status
 
-- Current Phase: 8 — VS Code Extension & Language Server (signature help)
-- Current Issue: [#65 — Add signature help for GEULION standard functions](https://github.com/dltldn1234/geulion/issues/65)
-- Working branch: `65-feat/signature-help`
+- Current Phase: 8 — VS Code Extension & Language Server (hover documentation)
+- Current Issue: [#67 — Add contextual hover documentation to VS Code](https://github.com/dltldn1234/geulion/issues/67)
+- Working branch: `67-feat/vscode-hover`
 - Current PR: not opened yet.
 - Initial baseline SHA: `afc1b41`
 - Initial main commit count: 58
-- Latest verified main SHA: `9b36d6e1f99c79ecd7643d4ed9d11b732c7091e5` (2026-11-09)
-- Current unique commits reachable from main: 136
-- New commits reachable from main since baseline: 78
-- Issue #65 local unmerged commits: 4 (initial progress record, provider implementation, signature-help tests/docs, this progress update).
-- Remaining to minimum 300: 164
-- Remaining to primary 400: 264
-- Remaining to extended 500: 364
-- Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed; [#36](https://github.com/dltldn1234/geulion/pull/36), Merge Commit `04a72ba`, CI passed; [#38](https://github.com/dltldn1234/geulion/pull/38), Merge Commit `0eb762f587a9aae70e9fb539513fcbd5959ca2b1`, CI passed; [#40](https://github.com/dltldn1234/geulion/pull/40), Merge Commit `cc62261e93b67b2519e01e9895a77111680101c1`, CI run `42508397430` passed; [#42](https://github.com/dltldn1234/geulion/pull/42), Merge Commit `30f9f5c07d563fd5867e92cdc5924f56b7cd0b7e`, CI run `42534464926` passed; [#44](https://github.com/dltldn1234/geulion/pull/44), Merge Commit `6b30d98f534c0ff8c3acbbdca50086f0fd9ff325`, CI run `42536546327` passed; [#46](https://github.com/dltldn1234/geulion/pull/46), Merge Commit `de9df5bc305966999609c32cc676f0fe59574df6`, CI run `42538207631` passed; [#48](https://github.com/dltldn1234/geulion/pull/48), Merge Commit `1b0f3f7daa75322516a25ee1c0a87c85d27a4e36`, CI run `42540812517` passed; [#50](https://github.com/dltldn1234/geulion/pull/50), Merge Commit `852915e29178de5475a072a75e2201fa2dc0a36c`, CI run `42542499311` passed; [#52](https://github.com/dltldn1234/geulion/pull/52), Merge Commit `77ae9fe05bb7b4b711fdc642b90f708506d9eb12`, CI run `42543552208` passed; [#54](https://github.com/dltldn1234/geulion/pull/54), Merge Commit `9d3fa6dbc7daa693dbf3d1f7d6e82d3f84eaaeb1`, CI run `42546017229` passed; [#56](https://github.com/dltldn1234/geulion/pull/56), Merge Commit `a5e7aa1471a875be5bb41ef1518a8de550161700`, CI run `42548068173` passed; [#58](https://github.com/dltldn1234/geulion/pull/58), Merge Commit `e22138a0b86a8c0a5b484f58a4e522411d06fa5f`, CI run `42551438200` passed; [#60](https://github.com/dltldn1234/geulion/pull/60), Merge Commit `393ea42803152555e3b8d28ec0891d8421b8b8fe`, CI run `42552939016` passed; [#62](https://github.com/dltldn1234/geulion/pull/62), Merge Commit `b3a6ef15f54ed274852e801fdb6e50ebfb53c901`, CI run `42554061977` passed; [#64](https://github.com/dltldn1234/geulion/pull/64), Merge Commit `9b36d6e1f99c79ecd7643d4ed9d11b732c7091e5`, CI run `42554755892` passed.
+- Latest verified main SHA: `a095ddd205034d95249bc03932368e97ad20b3b9` (2026-11-09)
+- Current unique commits reachable from main: 141
+- New commits reachable from main since baseline: 83
+- Issue #67 local unmerged commits: 4 (initial progress record, hover implementation, hover tests/docs, this progress update).
+- Remaining to minimum 300: 159
+- Remaining to primary 400: 259
+- Remaining to extended 500: 359
+- Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed; [#36](https://github.com/dltldn1234/geulion/pull/36), Merge Commit `04a72ba`, CI passed; [#38](https://github.com/dltldn1234/geulion/pull/38), Merge Commit `0eb762f587a9aae70e9fb539513fcbd5959ca2b1`, CI passed; [#40](https://github.com/dltldn1234/geulion/pull/40), Merge Commit `cc62261e93b67b2519e01e9895a77111680101c1`, CI run `42508397430` passed; [#42](https://github.com/dltldn1234/geulion/pull/42), Merge Commit `30f9f5c07d563fd5867e92cdc5924f56b7cd0b7e`, CI run `42534464926` passed; [#44](https://github.com/dltldn1234/geulion/pull/44), Merge Commit `6b30d98f534c0ff8c3acbbdca50086f0fd9ff325`, CI run `42536546327` passed; [#46](https://github.com/dltldn1234/geulion/pull/46), Merge Commit `de9df5bc305966999609c32cc676f0fe59574df6`, CI run `42538207631` passed; [#48](https://github.com/dltldn1234/geulion/pull/48), Merge Commit `1b0f3f7daa75322516a25ee1c0a87c85d27a4e36`, CI run `42540812517` passed; [#50](https://github.com/dltldn1234/geulion/pull/50), Merge Commit `852915e29178de5475a072a75e2201fa2dc0a36c`, CI run `42542499311` passed; [#52](https://github.com/dltldn1234/geulion/pull/52), Merge Commit `77ae9fe05bb7b4b711fdc642b90f708506d9eb12`, CI run `42543552208` passed; [#54](https://github.com/dltldn1234/geulion/pull/54), Merge Commit `9d3fa6dbc7daa693dbf3d1f7d6e82d3f84eaaeb1`, CI run `42546017229` passed; [#56](https://github.com/dltldn1234/geulion/pull/56), Merge Commit `a5e7aa1471a875be5bb41ef1518a8de550161700`, CI run `42548068173` passed; [#58](https://github.com/dltldn1234/geulion/pull/58), Merge Commit `e22138a0b86a8c0a5b484f58a4e522411d06fa5f`, CI run `42551438200` passed; [#60](https://github.com/dltldn1234/geulion/pull/60), Merge Commit `393ea42803152555e3b8d28ec0891d8421b8b8fe`, CI run `42552939016` passed; [#62](https://github.com/dltldn1234/geulion/pull/62), Merge Commit `b3a6ef15f54ed274852e801fdb6e50ebfb53c901`, CI run `42554061977` passed; [#64](https://github.com/dltldn1234/geulion/pull/64), Merge Commit `9b36d6e1f99c79ecd7643d4ed9d11b732c7091e5`, CI run `42554755892` passed; [#66](https://github.com/dltldn1234/geulion/pull/66), Merge Commit `a095ddd205034d95249bc03932368e97ad20b3b9`, CI run `42555621830` passed.
 
 ## Completed work
 
@@ -51,17 +51,19 @@
 - Issue #61 adds `check --format json` with compiler diagnostic fields and ranges, stdin source support for unsaved editor buffers, and debounced VS Code diagnostic collection that kills superseded checks and clears results on close. Local workspace tests pass with 18 files / 219 tests; build/typecheck, ESLint, Prettier, and diff checks pass. PR #62 merged after CI run `42554061977` passed.
 - Issue #63 adds lexer-aligned keyword completions, core and version-gated string helper signatures, and a v0.3-only public function snippet. The public snippet was removed from unconditional static snippets because `공개` is contextual, not a reserved word. Local workspace tests pass with 19 files / 221 tests; typecheck, ESLint, Prettier, and diff checks pass. PR #64 merged after CI run `42554755892` passed.
 - Issue #63 / PR #64 completed version-aware VS Code completions and merged with Merge Commit `9b36d6e1f99c79ecd7643d4ed9d11b732c7091e5`.
-- Issue #65 adds parameter and return signatures for core and version-enabled string built-ins, tracks nested delimiters, and ignores strings/comments while selecting arguments. Local workspace tests pass with 20 files / 224 tests; typecheck, ESLint, Prettier, and diff checks pass. PR and CI are pending.
+- Issue #65 adds parameter and return signatures for core and version-enabled string built-ins, tracks nested delimiters, and ignores strings/comments while selecting arguments. Local workspace tests pass with 20 files / 224 tests; typecheck, ESLint, Prettier, and diff checks pass. PR #66 merged after CI run `42555621830` passed.
+- Issue #65 / PR #66 completed built-in signature help and merged with Merge Commit `a095ddd205034d95249bc03932368e97ad20b3b9`.
+- Issue #67 adds contextual Korean hover documentation for built-ins and language terms with version-aware APIs. Local workspace tests pass with 21 files / 227 tests; typecheck, ESLint, Prettier, and diff checks pass. PR and CI are pending.
 
 ## Known limitations
 
 - The v0.2 increment covers only four pure string queries. Input, clocks, timers, randomness, persistence, filesystem access, browser APIs, FFI, and modules are not implemented.
-- Phase 7's playable Idle slice and capped offline-production/save migration are merged. Phase 8 language support, CLI check/run commands, structured editor diagnostics, version-aware completions, and built-in signature help are implemented; further Language Server functions and Phase 9/10 remain.
+- Phase 7's playable Idle slice and capped offline-production/save migration are merged. Phase 8 language support, CLI check/run commands, structured editor diagnostics, version-aware completions, and built-in signature help are implemented; other Language Server functions and Phase 9/10 remain.
 - The Node target remains Node-specific and auto-runs `시작`; only the explicit browser target produces a host-driven module without automatic entrypoint execution.
 
 ## Next
 
-1. Open and merge the Issue #65 PR after CI passes.
+1. Open and merge the Issue #67 PR after CI passes.
 2. Continue remaining Phase 8 Language Server functions, then advance to Phase 9 Playground and Phase 10 stability work.
 
 ## Commit growth tracking
