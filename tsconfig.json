@@ -8,6 +8,7 @@
     { "path": "./packages/codegen-js" },
     { "path": "./packages/compiler" },
     { "path": "./packages/host-api" },
-    { "path": "./packages/cli" }
+    { "path": "./packages/cli" },
+    { "path": "./packages/language-server" }
   ]
 }

@@ -1,0 +1,21 @@
+{
+  "name": "@geulion/language-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Language Server Protocol implementation for GEULION.",
+  "scripts": {
+    "build": "tsc --build",
+    "start": "node dist/server.js"
+  },
+  "bin": {
+    "geulion-language-server": "./dist/server.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@geulion/ast": "workspace:*",
+    "@geulion/compiler": "workspace:*"
+  }
+}
