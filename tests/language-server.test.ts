@@ -583,6 +583,7 @@ describe("GEULION Language Server Protocol", () => {
         "signatureHelpProvider",
         "hoverProvider",
         "definitionProvider",
+        "documentHighlightProvider",
         "documentSymbolProvider",
         "referencesProvider",
       ])
@@ -843,6 +844,112 @@ describe("GEULION Language Server Protocol", () => {
       await client.close();
     }
   });
+
+  it.each(["utf-8", "utf-16", "utf-32"] as const)(
+    "returns semantic document highlights using %s positions and current buffers",
+    async (encoding) => {
+      const client = new LspClient();
+      const uri = `file:///workspace/highlight-${encoding}.geul`;
+      const text =
+        '함수 인사(이름: 문자열) -> 문자열 { 반환 이름 }\n함수 시작() -> 없음 { 출력(인사("가")) }';
+      const lines = text.split("\n");
+      const declarationLine = lines[0] ?? "";
+      const callLine = lines[1] ?? "";
+      const encodedLength = (value: string) =>
+        encoding === "utf-8"
+          ? Buffer.byteLength(value, "utf8")
+          : encoding === "utf-32"
+            ? [...value].length
+            : value.length;
+      try {
+        const initialized = await client.request("initialize", {
+          capabilities: { general: { positionEncodings: [encoding] } },
+        });
+        expect(
+          (initialized.result as { capabilities: Record<string, unknown> }).capabilities
+            .positionEncoding,
+        ).toBe(encoding);
+        client.notification("initialized");
+        client.notification("textDocument/didOpen", {
+          textDocument: { uri, languageId: "geulion", version: 1, text },
+        });
+
+        const functionStart = callLine.indexOf("인사(");
+        const functionHighlights = await client.request("textDocument/documentHighlight", {
+          textDocument: { uri },
+          position: {
+            line: 1,
+            character: encodedLength(callLine.slice(0, functionStart)),
+          },
+        });
+        expect(
+          (
+            functionHighlights.result as {
+              range: {
+                start: { line: number; character: number };
+                end: { line: number; character: number };
+              };
+            }[]
+          ).map(({ range }) => range),
+        ).toEqual([
+          {
+            start: {
+              line: 0,
+              character: encodedLength(declarationLine.slice(0, declarationLine.indexOf("인사"))),
+            },
+            end: {
+              line: 0,
+              character: encodedLength(
+                declarationLine.slice(0, declarationLine.indexOf("인사")) + "인사",
+              ),
+            },
+          },
+          {
+            start: { line: 1, character: encodedLength(callLine.slice(0, functionStart)) },
+            end: { line: 1, character: encodedLength(callLine.slice(0, functionStart) + "인사") },
+          },
+        ]);
+
+        const parameterStart = declarationLine.indexOf("이름");
+        const parameterHighlights = await client.request("textDocument/documentHighlight", {
+          textDocument: { uri },
+          position: { line: 0, character: encodedLength(declarationLine.slice(0, parameterStart)) },
+        });
+        expect(parameterHighlights.result as unknown[]).toHaveLength(2);
+
+        const unknown = await client.request("textDocument/documentHighlight", {
+          textDocument: { uri },
+          position: {
+            line: 0,
+            character: encodedLength(
+              declarationLine.indexOf("반환") >= 0
+                ? declarationLine.slice(0, declarationLine.indexOf("반환"))
+                : "",
+            ),
+          },
+        });
+        expect(unknown.result).toEqual([]);
+
+        client.notification("textDocument/didChange", {
+          textDocument: { uri, version: 2 },
+          contentChanges: [{ text: "함수 시작() -> 없음 { 출력(1) }" }],
+        });
+        const changed = await client.request("textDocument/documentHighlight", {
+          textDocument: { uri },
+          position: { line: 0, character: 0 },
+        });
+        expect(changed.result).toEqual([]);
+        client.notification("textDocument/didClose", { textDocument: { uri } });
+        const closed = await client.request("textDocument/documentHighlight", {
+          textDocument: { uri },
+          position: { line: 0, character: 0 },
+        });
+        expect(closed.result).toEqual([]);
+      } finally {
+        await client.close();
+      }
+    },
+  );
 
   it("returns keyword help and suppresses hover inside comments over stdio", async () => {
     const client = new LspClient();

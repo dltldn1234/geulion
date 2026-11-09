@@ -578,6 +578,7 @@ function handleRequest(method: string, params: JsonObject): unknown {
         signatureHelpProvider: { triggerCharacters: ["(", ","], retriggerCharacters: [","] },
         hoverProvider: true,
         definitionProvider: true,
+        documentHighlightProvider: true,
         documentSymbolProvider: true,
         workspaceSymbolProvider: true,
         referencesProvider: true,
@@ -671,12 +672,22 @@ function handleRequest(method: string, params: JsonObject): unknown {
   if (
     method === "textDocument/definition" ||
     method === "textDocument/references" ||
+    method === "textDocument/documentHighlight" ||
     method === "textDocument/prepareRename"
   ) {
     const document = getDocument(params);
     const position = asPosition(getObject(params, "position"));
-    if (!document || !position) return method === "textDocument/references" ? [] : null;
+    if (!document || !position)
+      return method === "textDocument/references" || method === "textDocument/documentHighlight"
+        ? []
+        : null;
     const match = referencesAt(document, sourceOffset(document.text, position));
+    if (method === "textDocument/documentHighlight") {
+      if (!match) return [];
+      return [...match.analysis.program.references]
+        .filter(([, symbolId]) => symbolId === match.symbolId)
+        .map(([reference]) => ({ range: sourceRange(reference.span, document.text) }));
+    }
     if (!match || !match.symbol.span) return method === "textDocument/references" ? [] : null;
     const location = { uri: document.uri, range: sourceRange(match.symbol.span, document.text) };
     if (method === "textDocument/definition") return location;
