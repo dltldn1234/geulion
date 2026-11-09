@@ -1020,6 +1020,129 @@ describe("GEULION Language Server Protocol", () => {
     },
   );
 
+  it.each(["utf-8", "utf-16", "utf-32"] as const)(
+    "returns semantic token ranges using %s positions and current buffers",
+    async (encoding) => {
+      const client = new LspClient();
+      const uri = `file:///workspace/semantic-tokens-${encoding}.geul`;
+      const text =
+        '\uFEFF// 😀 line\r\n함수 시작() -> 없음 {\r\n  변수 값: 문자열 = "가//😀" /* 앞\r\n  // 안쪽\r\n  뒤 */\r\n  변수 숫자: 정수 = 42\r\n  반환\r\n}\r\n"unterminated\\\r\n// after invalid string';
+      const encodedLength = (value: string) =>
+        encoding === "utf-8"
+          ? Buffer.byteLength(value, "utf8")
+          : encoding === "utf-32"
+            ? [...value].length
+            : value.length;
+      const lines = text.split(/\r\n|\r|\n/u);
+      const tokenTypeNames = ["keyword", "string", "number", "operator", "punctuation", "comment"];
+      const tokenText = (lineIndex: number, start: number, length: number) => {
+        const line = lines[lineIndex] ?? "";
+        let offset = 0;
+        let value = "";
+        for (const character of line) {
+          const width = encodedLength(character);
+          if (offset >= start && offset + width <= start + length) value += character;
+          offset += width;
+        }
+        return value;
+      };
+      try {
+        const initialized = await client.request("initialize", {
+          capabilities: { general: { positionEncodings: [encoding] } },
+        });
+        const capabilities = (initialized.result as { capabilities: Record<string, unknown> })
+          .capabilities;
+        expect(capabilities.positionEncoding).toBe(encoding);
+        expect(capabilities.semanticTokensProvider).toEqual({
+          legend: { tokenTypes: tokenTypeNames, tokenModifiers: [] },
+          full: true,
+        });
+        client.notification("initialized");
+        client.notification("textDocument/didOpen", {
+          textDocument: { uri, languageId: "geulion", version: 1, text },
+        });
+
+        const response = await client.request("textDocument/semanticTokens/full", {
+          textDocument: { uri },
+        });
+        const data = (response.result as { data: number[] }).data;
+        expect(data.length % 5).toBe(0);
+        const decoded: { line: number; character: number; text: string; type: string }[] = [];
+        let line = 0;
+        let character = 0;
+        for (let index = 0; index < data.length; index += 5) {
+          const deltaLine = data[index] ?? 0;
+          const deltaCharacter = data[index + 1] ?? 0;
+          line += deltaLine;
+          character = deltaLine === 0 ? character + deltaCharacter : deltaCharacter;
+          const length = data[index + 2] ?? 0;
+          const type = tokenTypeNames[data[index + 3] ?? -1];
+          expect(type).toBeDefined();
+          expect(data[index + 4]).toBe(0);
+          decoded.push({
+            line,
+            character,
+            text: tokenText(line, character, length),
+            type: type ?? "",
+          });
+        }
+        expect(decoded).toEqual(
+          expect.arrayContaining([
+            {
+              line: 0,
+              character: encodedLength("\uFEFF"),
+              text: "// 😀 line",
+              type: "comment",
+            },
+            { line: 1, character: 0, text: "함수", type: "keyword" },
+            { line: 1, character: encodedLength("함수 시작"), text: "(", type: "punctuation" },
+            { line: 1, character: encodedLength("함수 시작() "), text: "->", type: "operator" },
+            { line: 1, character: encodedLength("함수 시작() -> "), text: "없음", type: "keyword" },
+            { line: 2, character: encodedLength("  "), text: "변수", type: "keyword" },
+            { line: 2, character: encodedLength("  변수 값: "), text: "문자열", type: "keyword" },
+            {
+              line: 2,
+              character: encodedLength("  변수 값: 문자열 = "),
+              text: '"가//😀"',
+              type: "string",
+            },
+            {
+              line: 2,
+              character: encodedLength('  변수 값: 문자열 = "가//😀" '),
+              text: "/* 앞",
+              type: "comment",
+            },
+            { line: 3, character: 0, text: "  // 안쪽", type: "comment" },
+            { line: 4, character: 0, text: "  뒤 */", type: "comment" },
+            {
+              line: 5,
+              character: encodedLength("  변수 숫자: 정수 = "),
+              text: "42",
+              type: "number",
+            },
+            { line: 9, character: 0, text: "// after invalid string", type: "comment" },
+          ]),
+        );
+
+        client.notification("textDocument/didChange", {
+          textDocument: { uri, version: 2 },
+          contentChanges: [{ text: "함수 시작() -> 없음 { 출력(7) }" }],
+        });
+        const changed = await client.request("textDocument/semanticTokens/full", {
+          textDocument: { uri },
+        });
+        expect((changed.result as { data: number[] }).data).not.toEqual(data);
+        client.notification("textDocument/didClose", { textDocument: { uri } });
+        const closed = await client.request("textDocument/semanticTokens/full", {
+          textDocument: { uri },
+        });
+        expect(closed.result).toEqual({ data: [] });
+      } finally {
+        await client.close();
+      }
+    },
+  );
+
   it("returns keyword help and suppresses hover inside comments over stdio", async () => {
     const client = new LspClient();
     const uri = "file:///workspace/hover.geul";
