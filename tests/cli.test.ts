@@ -37,9 +37,13 @@ describe("GEULION CLI", () => {
     expect(result.stdout).toContain("geulion parse <file.geul>");
     expect(result.stdout).toContain("geulion check <file.geul>");
     expect(result.stdout).toContain("geulion check <file.geul> [--language-version 0.2|0.3]");
-    expect(result.stdout).toContain("geulion emit-js <file.geul> [--language-version 0.2]");
+    expect(result.stdout).toContain(
+      "geulion emit-js <file.geul> [--target browser --language-version 0.3]",
+    );
     expect(result.stdout).toContain("geulion run <file.geul>");
-    expect(result.stdout).toContain("geulion build <file.geul> [--out-dir <directory>]");
+    expect(result.stdout).toContain(
+      "geulion build <file.geul> [--out-dir <directory>] [--target browser --language-version 0.3]",
+    );
   });
 
   it("prints the package version", () => {
@@ -168,25 +172,35 @@ describe("GEULION CLI", () => {
     });
   });
 
-  it("checks v0.3 public declarations while keeping Node commands unsupported", () => {
+  it("checks and emits v0.3 browser modules while keeping Node execution unsupported", () => {
     const source = `공개 함수 계산(값: 정수) -> 정수 { 반환 값 }
 함수 시작() -> 없음 {}`;
     withSource(new TextEncoder().encode(source), (path) => {
       const checked = runCli("check", path, "--language-version", "0.3");
       expect(checked.status).toBe(0);
       expect(checked.stderr).toBe("");
+      const emitted = runCli("emit-js", path, "--target", "browser", "--language-version", "0.3");
+      expect(emitted.status).toBe(0);
+      expect(emitted.stdout).toContain("export function createModule(host)");
+      expect(emitted.stdout).not.toContain('from "node:fs"');
       expect(runCli("emit-js", path, "--language-version", "0.3").status).toBe(2);
+      expect(runCli("emit-js", path, "--target", "browser").status).toBe(2);
       expect(runCli("run", path, "--language-version", "0.3").status).toBe(2);
-      expect(
-        runCli(
-          "build",
-          path,
-          "--language-version",
-          "0.3",
-          "--out-dir",
-          join(tmpdir(), "geulion-v03"),
-        ).status,
-      ).toBe(2);
+      const outputDirectory = join(dirname(path), "browser-output");
+      const built = runCli(
+        "build",
+        path,
+        "--target",
+        "browser",
+        "--language-version",
+        "0.3",
+        "--out-dir",
+        outputDirectory,
+      );
+      expect(built.status).toBe(0);
+      expect(readFileSync(join(outputDirectory, "main.mjs"), "utf8")).toContain(
+        "export function createModule(host)",
+      );
     });
   });
 
@@ -288,5 +302,7 @@ describe("GEULION CLI", () => {
     expect(runCli("check", "main.geul", "--language-version").status).toBe(2);
     expect(runCli("check", "main.geul", "--language-version", "0.4").status).toBe(2);
     expect(runCli("tokens", "main.geul", "--language-version", "0.2").status).toBe(2);
+    expect(runCli("check", "main.geul", "--target", "browser").status).toBe(2);
+    expect(runCli("build", "main.geul", "--target", "node").status).toBe(2);
   });
 });

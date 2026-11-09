@@ -16,6 +16,7 @@ interface PackageMetadata {
 
 type LanguageVersion = "0.1" | "0.2" | "0.3";
 type NodeLanguageVersion = Exclude<LanguageVersion, "0.3">;
+type CompilationTarget = "node" | "browser";
 
 function getVersion(): string {
   const packageJson = new URL("../package.json", import.meta.url);
@@ -36,9 +37,9 @@ function printHelp(): void {
       "  geulion tokens <file.geul>",
       "  geulion parse <file.geul>",
       "  geulion check <file.geul> [--language-version 0.2|0.3]",
-      "  geulion emit-js <file.geul> [--language-version 0.2]",
+      "  geulion emit-js <file.geul> [--target browser --language-version 0.3]",
       "  geulion run <file.geul> [--language-version 0.2]",
-      "  geulion build <file.geul> [--out-dir <directory>] [--language-version 0.2]",
+      "  geulion build <file.geul> [--out-dir <directory>] [--target browser --language-version 0.3]",
       "",
     ].join("\n"),
   );
@@ -58,11 +59,23 @@ type CompiledFile =
   | { readonly success: true; readonly code: string }
   | { readonly success: false; readonly status: number };
 
-function compileFile(path: string, languageVersion: NodeLanguageVersion): CompiledFile {
+function compileFile(
+  path: string,
+  languageVersion: LanguageVersion,
+  target: CompilationTarget,
+): CompiledFile {
   const source = readSource(path);
   if (source === undefined) return { success: false, status: 2 };
 
-  const result = compileSource({ path, source, target: "node", languageVersion });
+  const result =
+    target === "browser"
+      ? compileSource({ path, source, target: "browser", languageVersion: "0.3" })
+      : compileSource({
+          path,
+          source,
+          target: "node",
+          languageVersion: languageVersion as NodeLanguageVersion,
+        });
   if (!result.success) {
     return {
       success: false,
@@ -73,7 +86,7 @@ function compileFile(path: string, languageVersion: NodeLanguageVersion): Compil
 }
 
 function runFile(path: string, languageVersion: NodeLanguageVersion): number {
-  const result = compileFile(path, languageVersion);
+  const result = compileFile(path, languageVersion, "node");
   if (!result.success) return result.status;
 
   let temporaryDirectory: string | undefined;
@@ -105,9 +118,10 @@ function runFile(path: string, languageVersion: NodeLanguageVersion): number {
 function buildFile(
   path: string,
   outputDirectory: string,
-  languageVersion: NodeLanguageVersion,
+  languageVersion: LanguageVersion,
+  target: CompilationTarget,
 ): number {
-  const result = compileFile(path, languageVersion);
+  const result = compileFile(path, languageVersion, target);
   if (!result.success) return result.status;
 
   const outputPath = resolve(outputDirectory, `${basename(path).replace(/\.geul$/u, "")}.mjs`);
@@ -143,6 +157,7 @@ function inspectFile(
   command: "tokens" | "parse" | "check" | "emit-js",
   path: string,
   languageVersion: LanguageVersion,
+  target: CompilationTarget,
 ): number {
   let source: Buffer;
   try {
@@ -171,11 +186,15 @@ function inspectFile(
       : printDiagnostics(result.diagnostics, source, result.suppressedCount);
   }
   if (command === "emit-js") {
-    if (languageVersion === "0.3") {
-      process.stderr.write("오류: 언어 버전 0.3은 현재 Node 대상 컴파일을 지원하지 않습니다.\n");
-      return 2;
-    }
-    const result = compileSource({ path, source, target: "node", languageVersion });
+    const result =
+      target === "browser"
+        ? compileSource({ path, source, target: "browser", languageVersion: "0.3" })
+        : compileSource({
+            path,
+            source,
+            target: "node",
+            languageVersion: languageVersion as NodeLanguageVersion,
+          });
     if (!result.success)
       return printDiagnostics(result.diagnostics, source, result.suppressedCount);
     process.stdout.write(result.code);
@@ -216,6 +235,8 @@ export function runCli(args: readonly string[]): number {
     let languageVersion: LanguageVersion = "0.1";
     let hasLanguageVersion = false;
     let hasOutputDirectory = false;
+    let target: CompilationTarget = "node";
+    let hasTarget = false;
     for (let index = 2; index < args.length; index += 1) {
       const option = args[index];
       if (option === "--language-version" && !hasLanguageVersion) {
@@ -238,6 +259,19 @@ export function runCli(args: readonly string[]): number {
         outputDirectory = value;
         hasOutputDirectory = true;
         index += 1;
+      } else if (
+        (command === "emit-js" || command === "build") &&
+        option === "--target" &&
+        !hasTarget
+      ) {
+        const value = args[index + 1];
+        if (value !== "browser") {
+          process.stderr.write("오류: --target에는 browser만 지정할 수 있습니다.\n");
+          return 2;
+        }
+        target = "browser";
+        hasTarget = true;
+        index += 1;
       } else {
         process.stderr.write(
           `사용법: geulion ${command} <file.geul>${command === "build" ? " [--out-dir <directory>]" : ""} [--language-version 0.2]\n`,
@@ -253,6 +287,14 @@ export function runCli(args: readonly string[]): number {
       process.stderr.write(`오류: ${command} 명령은 언어 버전 선택을 사용하지 않습니다.\n`);
       return 2;
     }
+    if (hasTarget && languageVersion !== "0.3") {
+      process.stderr.write("오류: browser 대상은 --language-version 0.3과 함께 사용해야 합니다.\n");
+      return 2;
+    }
+    if (!hasTarget && languageVersion === "0.3" && (command === "emit-js" || command === "build")) {
+      process.stderr.write("오류: v0.3 코드 생성에는 --target browser가 필요합니다.\n");
+      return 2;
+    }
     if (command === "run") {
       if (languageVersion === "0.3") {
         process.stderr.write("오류: 언어 버전 0.3은 현재 check 명령만 지원합니다.\n");
@@ -261,13 +303,9 @@ export function runCli(args: readonly string[]): number {
       return runFile(path, languageVersion);
     }
     if (command === "build") {
-      if (languageVersion === "0.3") {
-        process.stderr.write("오류: 언어 버전 0.3은 현재 check 명령만 지원합니다.\n");
-        return 2;
-      }
-      return buildFile(path, outputDirectory, languageVersion);
+      return buildFile(path, outputDirectory, languageVersion, target);
     }
-    return inspectFile(command, path, languageVersion);
+    return inspectFile(command, path, languageVersion, target);
   }
 
   process.stderr.write(`Unknown command: ${args.join(" ")}\nRun 'geulion --help' for usage.\n`);
