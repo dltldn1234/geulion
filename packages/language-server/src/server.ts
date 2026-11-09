@@ -11,6 +11,7 @@ type Position = { line: number; character: number };
 type Range = { start: Position; end: Position };
 type Document = { uri: string; version: number; text: string };
 type PositionEncoding = "utf-8" | "utf-16" | "utf-32";
+type SemanticTokenSnapshot = { resultId: string; data: number[] };
 const LANGUAGE_VERSIONS = new Set<LanguageVersion>(["0.1", "0.2", "0.3"]);
 const KEYWORDS = [
   "상수",
@@ -118,6 +119,8 @@ type GeulTypeShape =
   | { kind: "primitive"; name: string }
   | { kind: "collection"; name: string; element: GeulTypeShape };
 const documents = new Map<string, Document>();
+const semanticTokenSnapshots = new Map<string, SemanticTokenSnapshot[]>();
+const MAX_SEMANTIC_TOKEN_SNAPSHOTS = 4;
 const IGNORED_WORKSPACE_DIRECTORIES = new Set([".git", "node_modules", "dist", "coverage"]);
 let languageVersion: LanguageVersion = "0.1";
 let positionEncoding: PositionEncoding = "utf-16";
@@ -128,6 +131,7 @@ let initialized = false;
 let initializationComplete = false;
 let shutdownRequested = false;
 let input = Buffer.alloc(0);
+let nextSemanticTokenResultId = 0;
 let expectedBodyLength: number | undefined;
 const pendingMessages: (JsonObject | typeof MALFORMED_MESSAGE)[] = [];
 let dispatchScheduled = false;
@@ -413,6 +417,71 @@ function semanticTokenData(document: Document): number[] {
     previousCharacter = token.character;
   }
   return data;
+}
+
+function semanticTokensFull(document: Document | undefined): SemanticTokenSnapshot {
+  const snapshot = {
+    resultId: `semantic-${++nextSemanticTokenResultId}`,
+    data: document ? semanticTokenData(document) : [],
+  };
+  if (document) {
+    const snapshots = semanticTokenSnapshots.get(document.uri) ?? [];
+    snapshots.push(snapshot);
+    if (snapshots.length > MAX_SEMANTIC_TOKEN_SNAPSHOTS) snapshots.shift();
+    semanticTokenSnapshots.set(document.uri, snapshots);
+  }
+  return snapshot;
+}
+
+function semanticTokenDelta(previous: number[], current: number[]): JsonObject[] {
+  const previousCount = Math.floor(previous.length / 5);
+  const currentCount = Math.floor(current.length / 5);
+  let prefix = 0;
+  while (
+    prefix < previousCount &&
+    prefix < currentCount &&
+    previous[prefix * 5] === current[prefix * 5] &&
+    previous[prefix * 5 + 1] === current[prefix * 5 + 1] &&
+    previous[prefix * 5 + 2] === current[prefix * 5 + 2] &&
+    previous[prefix * 5 + 3] === current[prefix * 5 + 3] &&
+    previous[prefix * 5 + 4] === current[prefix * 5 + 4]
+  )
+    prefix += 1;
+  let suffix = 0;
+  while (
+    suffix < previousCount - prefix &&
+    suffix < currentCount - prefix &&
+    previous[(previousCount - suffix - 1) * 5] === current[(currentCount - suffix - 1) * 5] &&
+    previous[(previousCount - suffix - 1) * 5 + 1] ===
+      current[(currentCount - suffix - 1) * 5 + 1] &&
+    previous[(previousCount - suffix - 1) * 5 + 2] ===
+      current[(currentCount - suffix - 1) * 5 + 2] &&
+    previous[(previousCount - suffix - 1) * 5 + 3] ===
+      current[(currentCount - suffix - 1) * 5 + 3] &&
+    previous[(previousCount - suffix - 1) * 5 + 4] === current[(currentCount - suffix - 1) * 5 + 4]
+  )
+    suffix += 1;
+  const start = prefix * 5;
+  const deleteCount = (previousCount - prefix - suffix) * 5;
+  const data = current.slice(start, (currentCount - suffix) * 5);
+  return deleteCount === 0 && data.length === 0 ? [] : [{ start, deleteCount, data }];
+}
+
+function semanticTokensDeltaResponse(
+  document: Document | undefined,
+  previousResultId: string | undefined,
+): JsonObject {
+  const previous = document
+    ? semanticTokenSnapshots
+        .get(document.uri)
+        ?.find((snapshot) => snapshot.resultId === previousResultId)
+    : undefined;
+  const current = semanticTokensFull(document);
+  if (!document || !previous) return current;
+  return {
+    resultId: current.resultId,
+    edits: semanticTokenDelta(previous.data, current.data),
+  };
 }
 
 function sourceOffset(text: string, position: Position): number {
@@ -741,7 +810,7 @@ function handleRequest(method: string, params: JsonObject): unknown {
         foldingRangeProvider: true,
         semanticTokensProvider: {
           legend: { tokenTypes: SEMANTIC_TOKEN_TYPES, tokenModifiers: [] },
-          full: true,
+          full: { delta: true },
         },
         workspaceSymbolProvider: true,
         referencesProvider: true,
@@ -904,7 +973,11 @@ function handleRequest(method: string, params: JsonObject): unknown {
   }
   if (method === "textDocument/semanticTokens/full") {
     const document = getDocument(params);
-    return { data: document ? semanticTokenData(document) : [] };
+    return semanticTokensFull(document);
+  }
+  if (method === "textDocument/semanticTokens/full/delta") {
+    const document = getDocument(params);
+    return semanticTokensDeltaResponse(document, getString(params, "previousResultId"));
   }
   if (method === "workspace/symbol") {
     const query = getString(params, "query") ?? "";
@@ -1038,6 +1111,7 @@ function handleNotification(method: string, params: JsonObject): void {
     if (uri && text !== undefined && version !== undefined) {
       const document = { uri, text, version };
       documents.set(uri, document);
+      semanticTokenSnapshots.delete(uri);
       publishDiagnostics(document);
     }
     return;
@@ -1069,6 +1143,7 @@ function handleNotification(method: string, params: JsonObject): void {
     const uri = getString(textDocument, "uri");
     if (uri) {
       documents.delete(uri);
+      semanticTokenSnapshots.delete(uri);
       notify("textDocument/publishDiagnostics", { uri, diagnostics: [] });
     }
     return;
