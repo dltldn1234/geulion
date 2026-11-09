@@ -252,6 +252,15 @@ importers:
 
   packages/host-api: {}
 
+  packages/language-server:
+    dependencies:
+      '@geulion/ast':
+        specifier: workspace:*
+        version: link:../ast
+      '@geulion/compiler':
+        specifier: workspace:*
+        version: link:../compiler
+
   packages/lexer:
     dependencies:
       '@geulion/ast':
