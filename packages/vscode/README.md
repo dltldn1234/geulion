@@ -16,6 +16,8 @@ Open and edited `.geul` files receive compiler diagnostics after a short debounc
 
 Completion suggestions include the lexer keywords and core built-ins. String helper signatures appear only for language versions 0.2 and 0.3. The `공개 함수` declaration suggestion appears only for v0.3 because `공개` is a contextual modifier rather than a reserved word.
 
+Signature help is available while calling core built-ins and the version-enabled string helpers. It tracks nested delimiters and ignores commas inside strings and comments when selecting the active parameter.
+
 Language Server features remain later Phase 8 work. Do not publish this extension to the Marketplace from this package.
 
 ## Validation
