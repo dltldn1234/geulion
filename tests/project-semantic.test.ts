@@ -146,10 +146,7 @@ describe("v0.4 project semantic analysis", () => {
         ),
       ).toBe(true);
 
-    const publicEntry = project([[
-      "app.geul",
-      "공개 함수 시작() -> 정수 { 반환 1 }",
-    ]]);
+    const publicEntry = project([["app.geul", "공개 함수 시작() -> 정수 { 반환 1 }"]]);
     const publicEntryResult = analyzeProjectSourceGraph(publicEntry);
     expect(publicEntryResult.success).toBe(false);
     if (!publicEntryResult.success)
