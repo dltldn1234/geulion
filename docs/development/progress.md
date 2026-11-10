@@ -3,17 +3,17 @@
 ## Current status
 
 - Current Phase: 10 — Language Server reliability and editor-workflow expansion
-- Current Issue: [#148 — Load v0.4 module projects from the CLI](https://github.com/dltldn1234/geulion/issues/148)
-- Working branch: `148-feat/v04-cli-projects`
+- Current Issue: [#150 — Analyze v0.4 modules in the Language Server](https://github.com/dltldn1234/geulion/issues/150)
+- Working branch: `150-feat/v04-language-server`
 - Initial baseline SHA: `afc1b41`
 - Initial main commit count: 58
-- Latest verified main SHA: `b0559d09bbcf04b59fad52d06d91ad5f82599a4b` (2026-11-10; `origin/main` after PR #147 merge)
-- Current unique commits reachable from main: 265 (58 initial + 207)
-- New commits reachable from baseline `afc1b41`: 207
-- Local unmerged Issue #148 implementation/test commits: 3 (2 implementation, 1 test); progress-log commits are counted separately.
-- Remaining to minimum 300: 35
-- Remaining to primary 400: 135
-- Remaining to extended 500: 235
+- Latest verified main SHA: `e2022ac84b56938366a97694444e1a2f7c9dcab1` (2026-11-10; `origin/main` after PR #149 merge)
+- Current unique commits reachable from main: 272 (58 initial + 214)
+- New commits reachable from baseline `afc1b41`: 214
+- Local unmerged Issue #150 implementation/test commits: 2 (1 implementation, 1 test); progress-log commits are counted separately.
+- Remaining to minimum 300: 28
+- Remaining to primary 400: 128
+- Remaining to extended 500: 228
 - Completed PRs: [#32](https://github.com/dltldn1234/geulion/pull/32), Merge Commit `8f72dad`, CI passed; [#34](https://github.com/dltldn1234/geulion/pull/34), Merge Commit `6518b9c`, CI run `42506220384` passed; [#36](https://github.com/dltldn1234/geulion/pull/36), Merge Commit `04a72ba`, CI passed; [#38](https://github.com/dltldn1234/geulion/pull/38), Merge Commit `0eb762f587a9aae70e9fb539513fcbd5959ca2b1`, CI passed; [#40](https://github.com/dltldn1234/geulion/pull/40), Merge Commit `cc62261e93b67b2519e01e9895a77111680101c1`, CI run `42508397430` passed; [#42](https://github.com/dltldn1234/geulion/pull/42), Merge Commit `30f9f5c07d563fd5867e92cdc5924f56b7cd0b7e`, CI run `42534464926` passed; [#44](https://github.com/dltldn1234/geulion/pull/44), Merge Commit `6b30d98f534c0ff8c3acbbdca50086f0fd9ff325`, CI run `42536546327` passed; [#46](https://github.com/dltldn1234/geulion/pull/46), Merge Commit `de9df5bc305966999609c32cc676f0fe59574df6`, CI run `42538207631` passed; [#48](https://github.com/dltldn1234/geulion/pull/48), Merge Commit `1b0f3f7daa75322516a25ee1c0a87c85d27a4e36`, CI run `42540812517` passed; [#50](https://github.com/dltldn1234/geulion/pull/50), Merge Commit `852915e29178de5475a072a75e2201fa2dc0a36c`, CI run `42542499311` passed; [#52](https://github.com/dltldn1234/geulion/pull/52), Merge Commit `77ae9fe05bb7b4b711fdc642b90f708506d9eb12`, CI run `42543552208` passed; [#54](https://github.com/dltldn1234/geulion/pull/54), Merge Commit `9d3fa6dbc7daa693dbf3d1f7d6e82d3f84eaaeb1`, CI run `42546017229` passed; [#56](https://github.com/dltldn1234/geulion/pull/56), Merge Commit `a5e7aa1471a875be5bb41ef1518a8de550161700`, CI run `42548068173` passed; [#58](https://github.com/dltldn1234/geulion/pull/58), Merge Commit `e22138a0b86a8c0a5b484f58a4e522411d06fa5f`, CI run `42551438200` passed; [#60](https://github.com/dltldn1234/geulion/pull/60), Merge Commit `393ea42803152555e3b8d28ec0891d8421b8b8fe`, CI run `42552939016` passed; [#62](https://github.com/dltldn1234/geulion/pull/62), Merge Commit `b3a6ef15f54ed274852e801fdb6e50ebfb53c901`, CI run `42554061977` passed; [#64](https://github.com/dltldn1234/geulion/pull/64), Merge Commit `9b36d6e1f99c79ecd7643d4ed9d11b732c7091e5`, CI run `42554755892` passed; [#66](https://github.com/dltldn1234/geulion/pull/66), Merge Commit `a095ddd205034d95249bc03932368e97ad20b3b9`, CI run `42555621830` passed; [#68](https://github.com/dltldn1234/geulion/pull/68), Merge Commit `5ea8d3fa2862ec199173fdae5c7cc85ee1e7e3a3`, CI run `42556270362` passed; [#70](https://github.com/dltldn1234/geulion/pull/70), Merge Commit `55662e2eaab49a63a497207eee91b3b915cb5f21`, CI run `42558581415` passed; [#72](https://github.com/dltldn1234/geulion/pull/72), Merge Commit `99094715bab6327056addeee0cd0f4d482ee7e82`, CI run `42559536742` passed; [#74](https://github.com/dltldn1234/geulion/pull/74), Merge Commit `43702585d2fddb5653b2df584162d7033e834fcf`, CI run `42563653079` passed.; [#76](https://github.com/dltldn1234/geulion/pull/76), Merge Commit `9472b625266222253cf422c24f352ce1e9f41472`, CI passed.
 - Latest merged slice: [PR #80](https://github.com/dltldn1234/geulion/pull/80), Merge Commit `c1f868b59948711084588332bec4f7c7f992e5fd`, CI run `42576077086` passed; Issue #79 closed as completed.
 - [PR #82](https://github.com/dltldn1234/geulion/pull/82) completed Issue #81 workspace symbol search and merged as `bfb4effefb1fac3181b21d0f897028eac74e9d3a`; CI passed and Issue #81 is closed.
@@ -117,18 +117,19 @@
 - Issue #144 adds project-wide signature collection before body analysis, NFC-normalized exports and aliases, explicit qualified-call resolution, visibility and entrypoint checks, and cross-module argument type checking. Local verification passed: full workspace tests (27 files / 318 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check`. PR #145 CI run `42746930755` passed and merged as `93280e7c74d88efee47250d48d522c8eb2b0546f`; Issue #144 is closed.
 
 - Issue #146 adds deterministic multi-module JavaScript emission from typed v0.4 graphs, globally unique cross-module identities, Node/browser behavior, multi-source source maps, and module-specific runtime diagnostic paths. PR #147 CI run `42748540840` passed and merged as `b0559d09bbcf04b59fad52d06d91ad5f82599a4b`; Issue #146 is closed.
-- Issue #148 implements filesystem loading for reachable v0.4 imports and wires the existing CLI check/emit-js/run/build commands to project compilation. Local verification is underway; PR and CI are pending.
+- Issue #148 adds root-confined filesystem loading for reachable v0.4 imports and wires CLI check/emit-js/run/build to project compilation. Local verification passed: 28 files / 326 tests, TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check`. PR #149 CI run `42749930182` passed and merged as `e2022ac84b56938366a97694444e1a2f7c9dcab1`; Issue #148 is closed.
+- Issue #150 adds v0.4 project-aware Language Server diagnostics across reachable import graphs, with open-buffer overlays, per-file related locations, dependent-file updates, and workspace-root invalidation. Local verification passed: 28 files / 327 tests, TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check`; PR/CI are pending.
 
 ## Known limitations
 
-- The v0.2 increment covers only four pure string queries. Input, clocks, timers, randomness, persistence, filesystem access, browser APIs, and FFI are not implemented. The v0.4 module contract, parser/AST groundwork, pure source graph, cross-module semantic resolution, and project JavaScript generation are merged. Issue #148 is implementing filesystem loading and CLI project commands; module-aware Language Server navigation remains unimplemented.
+- The v0.2 increment covers only four pure string queries. Input, clocks, timers, randomness, persistence, filesystem access, browser APIs, and FFI are not implemented. The v0.4 module contract, parser/AST groundwork, source graph, cross-module semantic resolution, project JavaScript generation, and CLI filesystem/project commands are merged. Issue #150 is implementing project-aware Language Server analysis; module-aware navigation follows.
 - Phase 7's playable Idle slice and capped offline-production/save migration are merged. Phase 8 has language basics, CLI commands, diagnostics, completions, signature help, hover, in-file navigation/references/rename, and the merged Issue #77 protocol server. Phase 9's local Playground is merged; its live browser UI still needs a local run where socket binding is available. Issue #75's Extension Host suite and Issue #79 Phase 10 protocol hardening have merged. Workspace symbol search covers open and closed `.geul` functions; unique-name cross-file definition/reference lookup is currently an editor aid and does not change compiler resolution. The current implementation scans workspace files for each symbol request, so very large workspaces may need an indexed follow-up.
 - The Node target remains Node-specific and auto-runs `시작`; only the explicit browser target produces a host-driven module without automatic entrypoint execution.
 
 ## Next
 
-1. Complete Issue #148 project filesystem loading and CLI `check`/`emit-js`/`run`/`build`; preserve the v0.1–v0.3 contracts.
-2. Add module-aware Language Server navigation after CLI project loading is available.
+1. Complete Issue #150 project-aware Language Server analysis and diagnostics.
+2. Implement import-aware definition, references, and rename for v0.4 modules.
 
 ## Commit growth tracking
 

@@ -1,6 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { Buffer } from "node:buffer";
-import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -151,6 +151,145 @@ async function openEditorDocument(
 }
 
 describe("GEULION Language Server Protocol", () => {
+  it("analyzes v0.4 imports across open buffers and refreshes project diagnostics", async () => {
+    const root = await mkdtemp(join(tmpdir(), "geulion-lsp-v04-project-"));
+    const sourceDirectory = join(root, "src");
+    await mkdir(sourceDirectory);
+    const entryPath = join(sourceDirectory, "main.geul");
+    const libraryPath = join(root, "lib.geul");
+    const entryUri = pathToFileURL(entryPath).toString();
+    const libraryUri = pathToFileURL(libraryPath).toString();
+    const client = new LspClient();
+    try {
+      await writeFile(
+        entryPath,
+        '가져오기 "../lib.geul" 별칭 도구\n함수 시작() -> 없음 { 출력(도구.값())\n출력(도구.비공개()) }',
+      );
+      await writeFile(
+        libraryPath,
+        "함수 비공개() -> 정수 { 반환 0 }\n공개 함수 값() -> 정수 { 반환 42 }",
+      );
+      await client.request("initialize", {
+        rootUri: pathToFileURL(root).toString(),
+        workspaceFolders: [{ uri: pathToFileURL(root).toString(), name: "project" }],
+        initializationOptions: { languageVersion: "0.4" },
+      });
+      client.notification("initialized");
+      client.notification("textDocument/didOpen", {
+        textDocument: {
+          uri: entryUri,
+          languageId: "geulion",
+          version: 1,
+          text: await readFile(entryPath, "utf8"),
+        },
+      });
+      const validEntry = await client.waitFor(
+        (message) =>
+          message.method === "textDocument/publishDiagnostics" &&
+          (message.params as Message).uri === entryUri,
+      );
+      const entryDiagnostics = (validEntry.params as Message).diagnostics as Message[];
+      expect(entryDiagnostics).toEqual([expect.objectContaining({ code: "GE2009" })]);
+      expect((entryDiagnostics[0]?.relatedInformation as Message[])[0]).toMatchObject({
+        location: { uri: libraryUri },
+      });
+
+      client.notification("textDocument/didOpen", {
+        textDocument: {
+          uri: libraryUri,
+          languageId: "geulion",
+          version: 2,
+          text: '공개 함수 값() -> 정수 { 반환 "잘못된 반환" }',
+        },
+      });
+      const invalidLibrary = await client.waitFor(
+        (message) =>
+          message.method === "textDocument/publishDiagnostics" &&
+          (message.params as Message).uri === libraryUri &&
+          ((message.params as Message).diagnostics as Message[]).length > 0,
+      );
+      const diagnostics = (invalidLibrary.params as Message).diagnostics as Message[];
+      expect(diagnostics).toEqual([expect.objectContaining({ code: "GE3001" })]);
+      expect((invalidLibrary.params as Message).version).toBe(2);
+
+      client.notification("textDocument/didChange", {
+        textDocument: { uri: libraryUri, version: 3 },
+        contentChanges: [
+          { text: "함수 비공개() -> 정수 { 반환 0 }\n공개 함수 값() -> 정수 { 반환 7 }" },
+        ],
+      });
+      const bufferChanged = await client.waitFor(
+        (message) =>
+          message.method === "textDocument/publishDiagnostics" &&
+          (message.params as Message).uri === libraryUri &&
+          (message.params as Message).version === 3,
+      );
+      expect((bufferChanged.params as Message).diagnostics).toEqual([]);
+      await writeFile(
+        libraryPath,
+        "함수 비공개() -> 정수 { 반환 0 }\n공개 함수 값() -> 정수 { 반환 7 }",
+      );
+      client.notification("textDocument/didClose", { textDocument: { uri: libraryUri } });
+      const refreshedLibrary = await client.waitFor(
+        (message) =>
+          message.method === "textDocument/publishDiagnostics" &&
+          (message.params as Message).uri === libraryUri &&
+          (message.params as Message).version === undefined &&
+          ((message.params as Message).diagnostics as Message[]).length === 0,
+      );
+      expect((refreshedLibrary.params as Message).diagnostics).toEqual([]);
+
+      const rootUri = pathToFileURL(root).toString();
+      client.notification("workspace/didChangeWorkspaceFolders", {
+        event: { added: [], removed: [{ uri: rootUri, name: "project" }] },
+      });
+      const escapedProject = await client.waitFor(
+        (message) =>
+          message.method === "textDocument/publishDiagnostics" &&
+          (message.params as Message).uri === entryUri &&
+          ((message.params as Message).diagnostics as Message[]).some(
+            (diagnostic) => diagnostic.code === "GE2007",
+          ),
+      );
+      expect((escapedProject.params as Message).diagnostics).toEqual(
+        expect.arrayContaining([expect.objectContaining({ code: "GE2007" })]),
+      );
+      client.notification("workspace/didChangeWorkspaceFolders", {
+        event: { added: [{ uri: rootUri, name: "project" }], removed: [] },
+      });
+      const restoredProject = await client.waitFor(
+        (message) =>
+          message.method === "textDocument/publishDiagnostics" &&
+          (message.params as Message).uri === entryUri &&
+          ((message.params as Message).diagnostics as Message[]).some(
+            (diagnostic) => diagnostic.code === "GE2009",
+          ) &&
+          !((message.params as Message).diagnostics as Message[]).some(
+            (diagnostic) => diagnostic.code === "GE2007",
+          ),
+      );
+      expect((restoredProject.params as Message).diagnostics).toEqual(
+        expect.arrayContaining([expect.objectContaining({ code: "GE2009" })]),
+      );
+
+      client.notification("workspace/didChangeConfiguration", {
+        settings: { geulion: { languageVersion: "0.3" } },
+      });
+      const legacyVersion = await client.waitFor(
+        (message) =>
+          message.method === "textDocument/publishDiagnostics" &&
+          (message.params as Message).uri === entryUri &&
+          ((message.params as Message).diagnostics as Message[]).length > 0,
+      );
+      expect((legacyVersion.params as Message).diagnostics).toEqual(
+        expect.arrayContaining([expect.objectContaining({ code: "GE2009" })]),
+      );
+    } finally {
+      await client.close();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("searches closed workspace files with live disk results and open-buffer overlays", async () => {
     const root = await mkdtemp(join(tmpdir(), "geulion-lsp-symbols-"));
     const linkedSource = await mkdtemp(join(tmpdir(), "geulion-lsp-linked-"));
