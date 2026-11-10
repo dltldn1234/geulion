@@ -7,7 +7,7 @@ import {
 import { parseSource } from "@geulion/compiler";
 import { resolveProgram } from "@geulion/semantic";
 
-function resolveText(source: string, languageVersion: "0.1" | "0.2" | "0.3" = "0.1") {
+function resolveText(source: string, languageVersion: "0.1" | "0.2" | "0.3" | "0.4" = "0.1") {
   const parsed = parseSource({ path: "resolver.geul", source: new TextEncoder().encode(source) });
   if (!parsed.success) throw new Error(`Invalid resolver fixture: ${parsed.diagnostics[0]?.code}`);
   return resolveProgram(parsed.ast, "resolver.geul", languageVersion);
@@ -43,6 +43,16 @@ describe("semantic name resolution", () => {
 함수 시작() -> 없음 {}`);
     expect(result.success).toBe(false);
     expect(result.diagnostics[0]).toMatchObject({ code: "GE2011", phase: "resolve" });
+  });
+
+  it("rejects v0.4 imports and qualified calls through the single-source resolver", () => {
+    const result = resolveText(
+      `가져오기 "./도구.geul" 별칭 도구
+함수 시작() -> 없음 { 출력(도구.계산()) }`,
+      "0.4",
+    );
+    expect(result.success).toBe(false);
+    expect(result.diagnostics.map(({ code }) => code)).toEqual(["GE2011", "GE2011"]);
   });
 
   it("requires v0.3 for public declarations and keeps duplicate normalized exports invalid", () => {
