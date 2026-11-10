@@ -10,7 +10,7 @@
 - Latest verified main SHA: `b4142f4276d56c3bffebd24330bc4ec437d8fedf` (2026-11-10; `origin/main` after PR #143 merge)
 - Current unique commits reachable from main: 253 (58 initial + 195)
 - New commits reachable from baseline `afc1b41`: 195
-- Local unmerged Issue #144 implementation commits: 2 (`94c48f4`, `0258602`; PR/CI pending).
+- Local unmerged Issue #144 implementation/test commits: 3 (`94c48f4`, `0258602`, `541d76f`; PR/CI pending).
 - Remaining to minimum 300: 47
 - Remaining to primary 400: 147
 - Remaining to extended 500: 247
@@ -114,7 +114,7 @@
 - Issue #138 records PR #137 and the 244-commit main snapshot. PR #139 passed CI run `42644348823` and merged as `2ec9727d0be4f2bc174aca25a0f6e977bba9fc62`; Issue #138 is closed.
 - Issue #140 adds the v0.4 dot token, import/qualified-call AST and parser, single-source rejection diagnostics, and false-reference prevention in existing workspace symbol navigation. PR #141 passed CI run `42648669242` and merged to `main` as `de86624f6747b87b09761b646119c06445440a61`; Issue #140 is closed.
 - Issue #142 adds the pure project module source-graph loader from a finite source map. Full workspace tests (26 files / 305 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check` passed locally; PR #143 CI run `42711263062` passed and merged as `b4142f4276d56c3bffebd24330bc4ec437d8fedf`; Issue #142 is closed. Filesystem access and symlink checks remain separate follow-up work.
-- Issue #144 adds project-wide signature collection before body analysis, NFC-normalized exports and aliases, explicit qualified-call resolution, visibility and entrypoint checks, and cross-module argument type checking. Local verification passes: full workspace tests (27 files / 317 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check`. Implementation commits `62a6012` and `80e8bc6` are local; PR/CI pending.
+- Issue #144 adds project-wide signature collection before body analysis, NFC-normalized exports and aliases, explicit qualified-call resolution, visibility and entrypoint checks, and cross-module argument type checking. Local verification passes: full workspace tests (27 files / 318 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check`. Implementation commits `62a6012` and `80e8bc6` are local; PR/CI pending.
 
 ## Known limitations
 
