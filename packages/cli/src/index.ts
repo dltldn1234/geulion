@@ -7,14 +7,17 @@ import {
   parseSource,
   checkSource,
   compileSource,
+  compileProjectSourceGraph,
+  analyzeProjectSourceGraph,
   renderDiagnostics,
 } from "@geulion/compiler";
+import { loadProjectFiles } from "./project-loader.js";
 
 interface PackageMetadata {
   readonly version: string;
 }
 
-type LanguageVersion = "0.1" | "0.2" | "0.3";
+type LanguageVersion = "0.1" | "0.2" | "0.3" | "0.4";
 type NodeLanguageVersion = Exclude<LanguageVersion, "0.3">;
 type CompilationTarget = "node" | "browser";
 
@@ -36,12 +39,12 @@ function printHelp(): void {
       "  geulion --version",
       "  geulion tokens <file.geul>",
       "  geulion parse <file.geul>",
-      "  geulion check <file.geul> [--language-version 0.2|0.3]",
+      "  geulion check <file.geul> [--language-version 0.2|0.3|0.4] [--root <directory>]",
       "  geulion check <file.geul> [--format json]",
       "  geulion check - [--format json]  # read source from stdin",
-      "  geulion emit-js <file.geul> [--target browser --language-version 0.3]",
-      "  geulion run <file.geul> [--language-version 0.2]",
-      "  geulion build <file.geul> [--out-dir <directory>] [--target browser --language-version 0.3]",
+      "  geulion emit-js <file.geul> [--target browser --language-version 0.3|0.4] [--root <directory>]",
+      "  geulion run <file.geul> [--language-version 0.2|0.4] [--root <directory>]",
+      "  geulion build <file.geul> [--out-dir <directory>] [--target browser --language-version 0.3|0.4] [--root <directory>]",
       "",
     ].join("\n"),
   );
@@ -65,7 +68,32 @@ function compileFile(
   path: string,
   languageVersion: LanguageVersion,
   target: CompilationTarget,
+  projectRoot?: string,
 ): CompiledFile {
+  if (languageVersion === "0.4") {
+    const loaded = loadProjectFiles(path, projectRoot);
+    if (!loaded.success) {
+      if ("message" in loaded) {
+        process.stderr.write(`오류: 프로젝트 파일을 불러올 수 없습니다.\n${loaded.message}\n`);
+        return { success: false, status: 2 };
+      }
+      return {
+        success: false,
+        status: printProjectDiagnostics(loaded.diagnostics, loaded.suppressedCount, loaded.sources),
+      };
+    }
+    const result = compileProjectSourceGraph(loaded.graph, target);
+    if (!result.success)
+      return {
+        success: false,
+        status: printProjectDiagnostics(
+          result.diagnostics,
+          result.suppressedCount,
+          new Map(loaded.graph.modules.map(({ path, source }) => [path, source])),
+        ),
+      };
+    return { success: true, code: result.code };
+  }
   const source = readSource(path);
   if (source === undefined) return { success: false, status: 2 };
 
@@ -76,7 +104,7 @@ function compileFile(
           path,
           source,
           target: "node",
-          languageVersion: languageVersion as NodeLanguageVersion,
+          languageVersion: languageVersion as Exclude<NodeLanguageVersion, "0.4">,
         });
   if (!result.success) {
     return {
@@ -87,8 +115,8 @@ function compileFile(
   return { success: true, code: result.code };
 }
 
-function runFile(path: string, languageVersion: NodeLanguageVersion): number {
-  const result = compileFile(path, languageVersion, "node");
+function runFile(path: string, languageVersion: NodeLanguageVersion, projectRoot?: string): number {
+  const result = compileFile(path, languageVersion, "node", projectRoot);
   if (!result.success) return result.status;
 
   let temporaryDirectory: string | undefined;
@@ -122,8 +150,9 @@ function buildFile(
   outputDirectory: string,
   languageVersion: LanguageVersion,
   target: CompilationTarget,
+  projectRoot?: string,
 ): number {
-  const result = compileFile(path, languageVersion, target);
+  const result = compileFile(path, languageVersion, target, projectRoot);
   if (!result.success) return result.status;
 
   const outputPath = resolve(outputDirectory, `${basename(path).replace(/\.geul$/u, "")}.mjs`);
@@ -155,13 +184,88 @@ function printDiagnostics(
   return diagnostics.some((d) => d.phase === "internal") ? 2 : 1;
 }
 
+function printProjectDiagnostics(
+  diagnostics: Parameters<typeof renderDiagnostics>[0],
+  suppressedCount = 0,
+  sources: ReadonlyMap<string, Uint8Array> = new Map(),
+): number {
+  for (const diagnostic of diagnostics) {
+    let sourceText: string | undefined;
+    const source = diagnostic.path === null ? undefined : sources.get(diagnostic.path);
+    if (source) {
+      try {
+        sourceText = new TextDecoder("utf-8", { fatal: true }).decode(source);
+      } catch {
+        /* Invalid source bytes have ranges but no source snippet. */
+      }
+    }
+    process.stderr.write(renderDiagnostics([diagnostic], sourceText));
+  }
+  if (suppressedCount > 0) process.stderr.write(renderDiagnostics([], undefined, suppressedCount));
+  return diagnostics.some((diagnostic) => diagnostic.phase === "internal") ? 2 : 1;
+}
+
+function inspectProjectFile(
+  command: "check" | "emit-js",
+  path: string,
+  target: CompilationTarget,
+  format: "text" | "json",
+  projectRoot?: string,
+): number {
+  const loaded = loadProjectFiles(path, projectRoot);
+  if ("message" in loaded) {
+    if (command === "check" && format === "json")
+      process.stdout.write(
+        `${JSON.stringify({ version: 1, success: false, diagnostics: [], suppressedCount: 0, error: { code: "file-read", message: loaded.message } })}\n`,
+      );
+    else process.stderr.write(`오류: 프로젝트 파일을 불러올 수 없습니다.\n${loaded.message}\n`);
+    return 2;
+  }
+  if (!loaded.success) {
+    if (command === "check" && format === "json")
+      process.stdout.write(
+        `${JSON.stringify({ version: 1, success: false, diagnostics: loaded.diagnostics, suppressedCount: loaded.suppressedCount })}\n`,
+      );
+    else printProjectDiagnostics(loaded.diagnostics, loaded.suppressedCount, loaded.sources);
+    return loaded.diagnostics.some((diagnostic) => diagnostic.phase === "internal") ? 2 : 1;
+  }
+
+  const result =
+    command === "check"
+      ? analyzeProjectSourceGraph(loaded.graph, target)
+      : compileProjectSourceGraph(loaded.graph, target);
+  if (command === "check" && format === "json") {
+    process.stdout.write(
+      `${JSON.stringify({ version: 1, success: result.success, diagnostics: result.diagnostics, suppressedCount: result.suppressedCount })}\n`,
+    );
+    return result.success
+      ? 0
+      : result.diagnostics.some((diagnostic) => diagnostic.phase === "internal")
+        ? 2
+        : 1;
+  }
+  if (result.success) {
+    if ("code" in result) process.stdout.write(result.code);
+    return 0;
+  }
+  return printProjectDiagnostics(
+    result.diagnostics,
+    result.suppressedCount,
+    new Map(loaded.graph.modules.map(({ path, source }) => [path, source])),
+  );
+}
+
 function inspectFile(
   command: "tokens" | "parse" | "check" | "emit-js",
   path: string,
   languageVersion: LanguageVersion,
   target: CompilationTarget,
   format: "text" | "json" = "text",
+  projectRoot?: string,
 ): number {
+  if (languageVersion === "0.4" && (command === "check" || command === "emit-js"))
+    return inspectProjectFile(command, path, target, format, projectRoot);
+
   let source: Buffer;
   try {
     source = path === "-" ? readFileSync(0) : readFileSync(path);
@@ -212,7 +316,7 @@ function inspectFile(
             path,
             source,
             target: "node",
-            languageVersion: languageVersion as NodeLanguageVersion,
+            languageVersion: languageVersion as Exclude<NodeLanguageVersion, "0.4">,
           });
     if (!result.success)
       return printDiagnostics(result.diagnostics, source, result.suppressedCount);
@@ -258,6 +362,8 @@ export function runCli(args: readonly string[]): number {
     let hasTarget = false;
     let format: "text" | "json" = "text";
     let hasFormat = false;
+    let projectRoot: string | undefined;
+    let hasProjectRoot = false;
     for (let index = 2; index < args.length; index += 1) {
       const option = args[index];
       if (command === "check" && option === "--format" && !hasFormat) {
@@ -271,11 +377,29 @@ export function runCli(args: readonly string[]): number {
       } else if (option === "--language-version" && !hasLanguageVersion) {
         const value = args[index + 1];
         if (value !== "0.1" && value !== "0.2" && value !== "0.3") {
-          process.stderr.write("오류: --language-version은 0.1, 0.2 또는 0.3이어야 합니다.\n");
-          return 2;
+          if (value !== "0.4") {
+            process.stderr.write(
+              "오류: --language-version은 0.1, 0.2, 0.3 또는 0.4이어야 합니다.\n",
+            );
+            return 2;
+          }
         }
         languageVersion = value;
         hasLanguageVersion = true;
+        index += 1;
+      } else if (
+        option === "--root" &&
+        !hasProjectRoot &&
+        command !== "tokens" &&
+        command !== "parse"
+      ) {
+        const value = args[index + 1];
+        if (!value) {
+          process.stderr.write("오류: --root 뒤에 프로젝트 디렉터리를 지정해야 합니다.\n");
+          return 2;
+        }
+        projectRoot = value;
+        hasProjectRoot = true;
         index += 1;
       } else if (command === "build" && option === "--out-dir" && !hasOutputDirectory) {
         const value = args[index + 1];
@@ -316,8 +440,14 @@ export function runCli(args: readonly string[]): number {
       process.stderr.write(`오류: ${command} 명령은 언어 버전 선택을 사용하지 않습니다.\n`);
       return 2;
     }
-    if (hasTarget && languageVersion !== "0.3") {
-      process.stderr.write("오류: browser 대상은 --language-version 0.3과 함께 사용해야 합니다.\n");
+    if (hasProjectRoot && languageVersion !== "0.4") {
+      process.stderr.write("오류: --root는 언어 버전 0.4 프로젝트에서만 사용할 수 있습니다.\n");
+      return 2;
+    }
+    if (hasTarget && languageVersion !== "0.3" && languageVersion !== "0.4") {
+      process.stderr.write(
+        "오류: browser 대상은 --language-version 0.3 또는 0.4와 함께 사용해야 합니다.\n",
+      );
       return 2;
     }
     if (!hasTarget && languageVersion === "0.3" && (command === "emit-js" || command === "build")) {
@@ -329,12 +459,12 @@ export function runCli(args: readonly string[]): number {
         process.stderr.write("오류: 언어 버전 0.3은 현재 check 명령만 지원합니다.\n");
         return 2;
       }
-      return runFile(path, languageVersion);
+      return runFile(path, languageVersion, projectRoot);
     }
     if (command === "build") {
-      return buildFile(path, outputDirectory, languageVersion, target);
+      return buildFile(path, outputDirectory, languageVersion, target, projectRoot);
     }
-    return inspectFile(command, path, languageVersion, target, format);
+    return inspectFile(command, path, languageVersion, target, format, projectRoot);
   }
 
   process.stderr.write(`Unknown command: ${args.join(" ")}\nRun 'geulion --help' for usage.\n`);
