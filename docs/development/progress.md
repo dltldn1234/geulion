@@ -10,7 +10,7 @@
 - Latest verified main SHA: `e2022ac84b56938366a97694444e1a2f7c9dcab1` (2026-11-10; `origin/main` after PR #149 merge)
 - Current unique commits reachable from main: 272 (58 initial + 214)
 - New commits reachable from baseline `afc1b41`: 214
-- Local unmerged Issue #150 implementation/test commits: 0 (implementation in progress).
+- Local unmerged Issue #150 implementation/test commits: 2 (1 implementation, 1 test); progress-log commits are counted separately.
 - Remaining to minimum 300: 28
 - Remaining to primary 400: 128
 - Remaining to extended 500: 228
@@ -118,7 +118,7 @@
 
 - Issue #146 adds deterministic multi-module JavaScript emission from typed v0.4 graphs, globally unique cross-module identities, Node/browser behavior, multi-source source maps, and module-specific runtime diagnostic paths. PR #147 CI run `42748540840` passed and merged as `b0559d09bbcf04b59fad52d06d91ad5f82599a4b`; Issue #146 is closed.
 - Issue #148 adds root-confined filesystem loading for reachable v0.4 imports and wires CLI check/emit-js/run/build to project compilation. Local verification passed: 28 files / 326 tests, TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check`. PR #149 CI run `42749930182` passed and merged as `e2022ac84b56938366a97694444e1a2f7c9dcab1`; Issue #148 is closed.
-- Issue #150 adds v0.4 project-aware Language Server analysis and diagnostics; implementation is in progress.
+- Issue #150 adds v0.4 project-aware Language Server diagnostics across reachable import graphs, with open-buffer overlays, per-file related locations, dependent-file updates, and workspace-root invalidation. Local verification passed: 28 files / 327 tests, TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check`; PR/CI are pending.
 
 ## Known limitations
 
