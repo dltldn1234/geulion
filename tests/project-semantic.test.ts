@@ -174,6 +174,16 @@ describe("v0.4 project semantic analysis", () => {
       expect(publicEntryResult.diagnostics.map(({ code }) => code)).toContain("GE2010");
   });
 
+  it("allows a browser entry module without start but requires an export", () => {
+    const browserGraph = project([["app.geul", "공개 함수 값() -> 정수 { 반환 1 }"]]);
+    expect(analyzeProjectSourceGraph(browserGraph, "browser").success).toBe(true);
+
+    const libraryOnly = project([["app.geul", "함수 값() -> 정수 { 반환 1 }"]]);
+    const result = analyzeProjectSourceGraph(libraryOnly, "browser");
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.diagnostics.map(({ code }) => code)).toContain("GE2005");
+  });
+
   it("returns the same diagnostics when source map enumeration order changes", () => {
     const files = [
       [

@@ -1,4 +1,5 @@
 import {
+  SourceFile,
   createDiagnostic,
   type Diagnostic,
   type ImportDeclarationNode,
@@ -14,6 +15,7 @@ import {
   typeFromNode,
 } from "@geulion/semantic";
 import { parseSource } from "./frontend.js";
+import { generateProjectJavaScript } from "@geulion/codegen-js";
 
 /** Source map keys and entryPath are canonical, root-relative `.geul` paths. */
 export interface ProjectSourceInput {
@@ -26,6 +28,7 @@ export interface ProjectSourceInput {
 
 export interface ProjectModule {
   readonly path: string;
+  readonly source: Uint8Array;
   readonly ast: ProgramNode;
   readonly imports: readonly ProjectModuleImport[];
 }
@@ -70,6 +73,18 @@ export type ProjectAnalysis =
       readonly diagnostics: readonly [];
       readonly suppressedCount: 0;
     }
+  | {
+      readonly success: false;
+      readonly diagnostics: readonly Diagnostic[];
+      readonly suppressedCount: number;
+    };
+
+export type ProjectCompilationResult =
+  | ({
+      readonly success: true;
+      readonly diagnostics: readonly [];
+      readonly suppressedCount: 0;
+    } & ReturnType<typeof generateProjectJavaScript>)
   | {
       readonly success: false;
       readonly diagnostics: readonly Diagnostic[];
@@ -123,7 +138,10 @@ function moduleFunctionSymbols(module: ProjectModule): {
 }
 
 /** Resolves and type-checks every module after collecting the complete signature graph. */
-export function analyzeProjectSourceGraph(graph: ProjectSourceGraph): ProjectAnalysis {
+export function analyzeProjectSourceGraph(
+  graph: ProjectSourceGraph,
+  target: "node" | "browser" = "node",
+): ProjectAnalysis {
   const symbols = new Map(
     graph.modules.map((module) => [module.path, moduleFunctionSymbols(module)]),
   );
@@ -150,7 +168,8 @@ export function analyzeProjectSourceGraph(graph: ProjectSourceGraph): ProjectAna
     }
     const options: ProjectResolutionOptions = {
       imports,
-      entrypoint: module.path === graph.entryPath ? "required" : "forbidden",
+      entrypoint:
+        module.path !== graph.entryPath ? "forbidden" : target === "node" ? "required" : "optional",
     };
     const result = analyzeProgram(module.ast, module.path, "0.4", options);
     if (result.success) results.push({ path: module.path, program: result.program });
@@ -160,11 +179,43 @@ export function analyzeProjectSourceGraph(graph: ProjectSourceGraph): ProjectAna
     }
   }
 
+  if (
+    target === "browser" &&
+    !results.find(({ path }) => path === graph.entryPath)?.program.exports.length
+  )
+    diagnostics.push(
+      createDiagnostic({
+        code: "GE2005",
+        phase: "resolve",
+        message: "브라우저 프로젝트의 진입 모듈에는 공개 함수가 하나 이상 필요합니다.",
+        path: graph.entryPath,
+        range: null,
+        help: "진입 모듈에 `공개 함수` 선언을 하나 이상 추가하세요.",
+      }),
+    );
   const limited = diagnostics.slice(0, MAX_DIAGNOSTICS);
   suppressedCount += Math.max(0, diagnostics.length - MAX_DIAGNOSTICS);
   if (limited.length > 0 || suppressedCount > 0)
     return { success: false, diagnostics: limited, suppressedCount };
   return { success: true, modules: results, diagnostics: [], suppressedCount: 0 };
+}
+
+/** Checks a v0.4 project graph and emits one deterministic in-memory artifact. */
+export function compileProjectSourceGraph(
+  graph: ProjectSourceGraph,
+  target: "node" | "browser" = "node",
+): ProjectCompilationResult {
+  const analysis = analyzeProjectSourceGraph(graph, target);
+  if (!analysis.success) return analysis;
+  const sources = graph.modules.map(({ path, source }) => ({
+    path,
+    text: SourceFile.fromBytes(path, source).text,
+  }));
+  const generated = generateProjectJavaScript(
+    { entryPath: graph.entryPath, modules: analysis.modules, sources },
+    { target },
+  );
+  return { success: true, ...generated, diagnostics: [], suppressedCount: 0 };
 }
 
 function hasControlCharacter(value: string): boolean {
@@ -370,7 +421,12 @@ export function loadProjectSourceGraph(input: ProjectSourceInput): ProjectSource
       pending.push({ path: resolved.path, requestedBy: { importerPath: item.path, declaration } });
     }
 
-    modules.set(item.path, { path: item.path, ast: parsed.ast, imports: resolvedImports });
+    modules.set(item.path, {
+      path: item.path,
+      source: source.slice(),
+      ast: parsed.ast,
+      imports: resolvedImports,
+    });
   }
 
   if (diagnostics.length > 0 || suppressedCount > 0) {
