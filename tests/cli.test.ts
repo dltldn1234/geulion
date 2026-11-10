@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -36,14 +36,16 @@ describe("GEULION CLI", () => {
     expect(result.stdout).toContain("geulion tokens <file.geul>");
     expect(result.stdout).toContain("geulion parse <file.geul>");
     expect(result.stdout).toContain("geulion check <file.geul>");
-    expect(result.stdout).toContain("geulion check <file.geul> [--language-version 0.2|0.3]");
+    expect(result.stdout).toContain(
+      "geulion check <file.geul> [--language-version 0.2|0.3|0.4] [--root <directory>]",
+    );
     expect(result.stdout).toContain("geulion check <file.geul> [--format json]");
     expect(result.stdout).toContain(
-      "geulion emit-js <file.geul> [--target browser --language-version 0.3]",
+      "geulion emit-js <file.geul> [--target browser --language-version 0.3|0.4] [--root <directory>]",
     );
     expect(result.stdout).toContain("geulion run <file.geul>");
     expect(result.stdout).toContain(
-      "geulion build <file.geul> [--out-dir <directory>] [--target browser --language-version 0.3]",
+      "geulion build <file.geul> [--out-dir <directory>] [--target browser --language-version 0.3|0.4] [--root <directory>]",
     );
   });
 
@@ -362,9 +364,122 @@ describe("GEULION CLI", () => {
     expect(runCli("build", "main.geul", "--out-dir").status).toBe(2);
     expect(runCli("build", "main.geul", "--wrong", "dist").status).toBe(2);
     expect(runCli("check", "main.geul", "--language-version").status).toBe(2);
-    expect(runCli("check", "main.geul", "--language-version", "0.4").status).toBe(2);
+    expect(runCli("check", "main.geul", "--language-version", "0.5").status).toBe(2);
+    expect(runCli("check", "main.geul", "--root", "project").status).toBe(2);
     expect(runCli("tokens", "main.geul", "--language-version", "0.2").status).toBe(2);
     expect(runCli("check", "main.geul", "--target", "browser").status).toBe(2);
     expect(runCli("build", "main.geul", "--target", "node").status).toBe(2);
+  });
+
+  it("checks, emits, runs, and builds a root-confined v0.4 project", () => {
+    const directory = mkdtempSync(join(tmpdir(), "geulion-v04-cli-"));
+    const sourceDirectory = join(directory, "src");
+    const entry = join(sourceDirectory, "main.geul");
+    const library = join(directory, "lib.geul");
+    const buildDirectory = join(directory, "build");
+    mkdirSync(sourceDirectory);
+    writeFileSync(
+      entry,
+      '가져오기 "../lib.geul" 별칭 도구\n함수 시작() -> 없음 { 출력(도구.값()) }',
+    );
+    writeFileSync(library, "공개 함수 값() -> 정수 { 반환 42 }");
+    try {
+      const check = runCli("check", entry, "--language-version", "0.4", "--root", directory);
+      expect(check.status).toBe(0);
+      expect(check.stderr).toBe("");
+
+      const emitted = runCli("emit-js", entry, "--language-version", "0.4", "--root", directory);
+      expect(emitted.status).toBe(0);
+      const executed = spawnSync(process.execPath, ["--input-type=module", "-"], {
+        input: emitted.stdout,
+        encoding: "utf8",
+        timeout: 5000,
+      });
+      expect(executed.status).toBe(0);
+      expect(executed.stdout).toBe("42\n");
+
+      const run = runCli("run", entry, "--language-version", "0.4", "--root", directory);
+      expect(run.status).toBe(0);
+      expect(run.stdout).toBe("42\n");
+
+      const build = runCli(
+        "build",
+        entry,
+        "--language-version",
+        "0.4",
+        "--root",
+        directory,
+        "--out-dir",
+        buildDirectory,
+      );
+      expect(build.status).toBe(0);
+      const artifact = spawnSync(process.execPath, [join(buildDirectory, "main.mjs")], {
+        encoding: "utf8",
+        timeout: 5000,
+      });
+      expect(artifact.status).toBe(0);
+      expect(artifact.stdout).toBe("42\n");
+
+      writeFileSync(
+        entry,
+        '가져오기 "../lib.geul" 별칭 도구\n공개 함수 결과() -> 정수 { 반환 도구.값() }',
+      );
+      const browser = runCli(
+        "emit-js",
+        entry,
+        "--language-version",
+        "0.4",
+        "--target",
+        "browser",
+        "--root",
+        directory,
+      );
+      expect(browser.status).toBe(0);
+      expect(browser.stdout).not.toContain('from "node:fs"');
+      expect(browser.stdout).toContain("createModule");
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects v0.4 imports that traverse symlinks or mismatch file case", () => {
+    const directory = mkdtempSync(join(tmpdir(), "geulion-v04-guard-"));
+    const entry = join(directory, "main.geul");
+    const target = join(directory, "real.geul");
+    const link = join(directory, "linked.geul");
+    writeFileSync(entry, '가져오기 "./linked.geul" 별칭 도구\n함수 시작() -> 없음 {}');
+    writeFileSync(target, "공개 함수 값() -> 정수 { 반환 1 }");
+    symlinkSync(target, link);
+    try {
+      const linked = runCli("check", entry, "--language-version", "0.4");
+      expect(linked.status).toBe(2);
+      expect(linked.stderr).toContain("심볼릭 링크");
+
+      writeFileSync(entry, '가져오기 "./REAL.geul" 별칭 도구\n함수 시작() -> 없음 {}');
+      const wrongCase = runCli("check", entry, "--language-version", "0.4");
+      expect(wrongCase.status).toBe(2);
+      expect(wrongCase.stderr).toContain("대소문자");
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("returns project diagnostics for missing modules and root escapes", () => {
+    const directory = mkdtempSync(join(tmpdir(), "geulion-v04-paths-"));
+    const entry = join(directory, "main.geul");
+    try {
+      writeFileSync(entry, '가져오기 "./missing.geul" 별칭 도구\n함수 시작() -> 없음 {}');
+      const missing = runCli("check", entry, "--language-version", "0.4", "--format", "json");
+      expect(missing.status).toBe(1);
+      expect(JSON.parse(missing.stdout)).toMatchObject({ success: false });
+      expect(missing.stdout).toContain("GE2006");
+
+      writeFileSync(entry, '가져오기 "../escape.geul" 별칭 도구\n함수 시작() -> 없음 {}');
+      const escape = runCli("check", entry, "--language-version", "0.4");
+      expect(escape.status).toBe(1);
+      expect(escape.stderr).toContain("GE2007");
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 });
