@@ -27,6 +27,7 @@ interface AbiType {
  * Keep every runtime dependency inside its body; type-only imports are erased.
  */
 export function createRuntime(host: RuntimeHost, path: string) {
+  type RuntimeSpan = SourceSpan | { readonly path: string; readonly span: SourceSpan };
   const minimumInteger = -(1n << 63n);
   const maximumInteger = (1n << 63n) - 1n;
   const unit = Object.freeze({ kind: "unit" } as const);
@@ -38,25 +39,30 @@ export function createRuntime(host: RuntimeHost, path: string) {
     }
   }
 
+  function locate(span: RuntimeSpan): { readonly path: string; readonly range: SourceSpan } {
+    return "span" in span ? { path: span.path, range: span.span } : { path, range: span };
+  }
+
   function fail(
     code: "GE4001" | "GE4002" | "GE4003" | "GE4004",
     message: string,
     help: string,
-    range: SourceSpan,
+    span: RuntimeSpan,
   ): never {
+    const location = locate(span);
     throw new RuntimeFailure({
       code,
       phase: "runtime",
       severity: "error",
       message,
-      path,
-      range,
+      path: location.path,
+      range: location.range,
       help,
       related: [],
     });
   }
 
-  function checked(value: bigint, span: SourceSpan): bigint {
+  function checked(value: bigint, span: RuntimeSpan): bigint {
     if (value < minimumInteger || value > maximumInteger) {
       fail(
         "GE4001",
@@ -72,7 +78,7 @@ export function createRuntime(host: RuntimeHost, path: string) {
     operator: "+" | "-" | "*" | "/" | "%",
     left: bigint,
     right: bigint,
-    span: SourceSpan,
+    span: RuntimeSpan,
   ): bigint {
     if ((operator === "/" || operator === "%") && right === 0n) {
       fail(
@@ -96,7 +102,7 @@ export function createRuntime(host: RuntimeHost, path: string) {
     }
   }
 
-  function negateInteger(value: bigint, span: SourceSpan): bigint {
+  function negateInteger(value: bigint, span: RuntimeSpan): bigint {
     return checked(-value, span);
   }
 
@@ -216,7 +222,7 @@ export function createRuntime(host: RuntimeHost, path: string) {
     throw new Error("Invalid runtime value");
   }
 
-  function output(value: RuntimeValue, span: SourceSpan) {
+  function output(value: RuntimeValue, span: RuntimeSpan) {
     const text = `${canonical(value)}\n`;
     try {
       host.write(text);
@@ -231,7 +237,7 @@ export function createRuntime(host: RuntimeHost, path: string) {
     return unit;
   }
 
-  function toInteger(value: number, span: SourceSpan): bigint {
+  function toInteger(value: number, span: RuntimeSpan): bigint {
     if (!Number.isFinite(value) || value < -(2 ** 63) || value >= 2 ** 63) {
       fail(
         "GE4003",
