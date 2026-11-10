@@ -7,10 +7,10 @@
 - Working branch: `152-feat/v04-lsp-navigation`
 - Initial baseline SHA: `afc1b41`
 - Initial main commit count: 58
-- Latest verified main SHA: `ec408c723182f516da1be239217e340eeba6ed80` (2026-11-10; `origin/main` after PR #151 merge)
+- Latest known main SHA: `ec408c723182f516da1be239217e340eeba6ed80` (cached `origin/main`; refresh could not resolve GitHub DNS on 2026-11-10)
 - Current unique commits reachable from main: 277 (58 initial + 219)
 - New commits reachable from baseline `afc1b41`: 219
-- Local unmerged Issue #150 implementation/test commits: 2 (1 implementation, 1 test); progress-log commits are counted separately.
+- Local unmerged Issue #152 functional commits: 2 (1 implementation, 1 subprocess-test slice); progress-ledger commits are counted separately.
 - Remaining to minimum 300: 23
 - Remaining to primary 400: 123
 - Remaining to extended 500: 223
@@ -119,7 +119,7 @@
 - Issue #146 adds deterministic multi-module JavaScript emission from typed v0.4 graphs, globally unique cross-module identities, Node/browser behavior, multi-source source maps, and module-specific runtime diagnostic paths. PR #147 CI run `42748540840` passed and merged as `b0559d09bbcf04b59fad52d06d91ad5f82599a4b`; Issue #146 is closed.
 - Issue #148 adds root-confined filesystem loading for reachable v0.4 imports and wires CLI check/emit-js/run/build to project compilation. Local verification passed: 28 files / 326 tests, TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check`. PR #149 CI run `42749930182` passed and merged as `e2022ac84b56938366a97694444e1a2f7c9dcab1`; Issue #148 is closed.
 - Issue #150 adds v0.4 project-aware Language Server diagnostics across reachable import graphs, with open-buffer overlays, per-file related locations, dependent-file updates, and workspace-root invalidation. Local verification passed: 28 files / 327 tests, TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check`. PR #151 CI run `42751431328` passed and merged as `ec408c723182f516da1be239217e340eeba6ed80`; Issue #150 is closed.
-- Issue #152 adds import-aware v0.4 definition, references, completion, hover, and rename; implementation is in progress.
+- Issue #152 implements import-aware v0.4 definition, references, public-export completion, hover/signature help, and project/local/alias rename. Its subprocess regression covers cyclic imports, unrelated same-named private declarations, an unsaved imported buffer, UTF-8 positions, and applying function/local/alias edits followed by clean diagnostics. Local verification passed: 28 files / 328 tests, TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check`; push and remote CI are pending because GitHub DNS resolution failed during fetch.
 
 ## Known limitations
 
