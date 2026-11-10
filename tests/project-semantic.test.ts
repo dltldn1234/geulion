@@ -110,6 +110,27 @@ describe("v0.4 project semantic analysis", () => {
     if (!result.success) expect(result.diagnostics.map(({ code }) => code)).toContain("GE2001");
   });
 
+  it("points private export diagnostics to the declaring module", () => {
+    const graph = project([
+      [
+        "app.geul",
+        `가져오기 "./lib.geul" 별칭 도구
+함수 시작() -> 없음 { 출력(도구.숨김()) }`,
+      ],
+      ["lib.geul", "함수 숨김() -> 정수 { 반환 1 }"],
+    ]);
+
+    const result = analyzeProjectSourceGraph(graph);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const diagnostic = result.diagnostics.find(({ code }) => code === "GE2009");
+      expect(diagnostic).toMatchObject({
+        path: "app.geul",
+        related: [expect.objectContaining({ path: "lib.geul" })],
+      });
+    }
+  });
+
   it("reports an import alias colliding with a local function", () => {
     const graph = project([
       [
