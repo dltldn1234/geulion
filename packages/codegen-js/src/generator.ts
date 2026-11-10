@@ -5,12 +5,13 @@ import type {
   SourceSpan,
   StatementNode,
 } from "@geulion/ast";
-import type { GeulType, TypedProgram } from "@geulion/semantic";
+import type { GeulType, ProjectTypedProgram, TypedProgram } from "@geulion/semantic";
 import { createRuntime } from "./runtime.js";
 
 export interface GeneratedSourceMapping {
   readonly generatedLine: number;
   readonly generatedColumn: number;
+  readonly sourcePath: string;
   readonly source: SourceSpan;
 }
 
@@ -60,11 +61,13 @@ function vlq(value: number): string {
 }
 
 export function generateJavaScript(
-  program: TypedProgram,
+  program: TypedProgram | ProjectTypedProgram,
   options: {
     readonly sourceText?: string;
     readonly fileName?: string;
     readonly target?: "node" | "browser";
+    readonly sourceFiles?: readonly { readonly path: string; readonly text: string }[];
+    readonly sourcePathBySpan?: (span: SourceSpan) => string;
   } = {},
 ) {
   if (program.checked !== true) throw new Error("Code generation requires a checked typed program");
@@ -74,7 +77,12 @@ export function generateJavaScript(
   function line(text: string, source?: SourceSpan) {
     for (const part of text.split("\n")) {
       if (source)
-        mappings.push({ generatedLine: lines.length + 1, generatedColumn: indent * 2, source });
+        mappings.push({
+          generatedLine: lines.length + 1,
+          generatedColumn: indent * 2,
+          sourcePath: options.sourcePathBySpan?.(source) ?? program.path,
+          source,
+        });
       lines.push(`${"  ".repeat(indent)}${part}`);
     }
   }
@@ -84,7 +92,8 @@ export function generateJavaScript(
     return id;
   }
   function span(source: SourceSpan): string {
-    return JSON.stringify(source);
+    const sourcePath = options.sourcePathBySpan?.(source);
+    return JSON.stringify(sourcePath ? { path: sourcePath, span: source } : source);
   }
   function frozenAbiType(type: GeulType): string {
     if (type.kind === "error") throw new Error("Cannot publish an error type");
@@ -122,8 +131,6 @@ export function generateJavaScript(
       case "IndexExpression":
         return `_g.index(${expression(node.target)}, ${expression(node.index)})`;
       case "CallExpression": {
-        if (node.namespace !== null)
-          throw new Error("Project-qualified calls require project compilation");
         const id = symbolId(node.callee);
         const symbol = program.symbols.get(id);
         if (!symbol || (symbol.kind !== "function" && symbol.kind !== "prelude"))
@@ -227,8 +234,13 @@ export function generateJavaScript(
   }
 
   if (options.target !== "browser") {
+    if (program.entrypoint === null) throw new Error("Node code generation requires an entrypoint");
     line('import { writeSync as _g_writeSync } from "node:fs";');
-    line(`const _g_source = ${quoted(options.sourceText?.replace(/^\uFEFF/, "") ?? "")};`);
+    if (options.sourceFiles) {
+      line(
+        `const _g_sources = new Map(${JSON.stringify(options.sourceFiles.map(({ path, text }) => [path, text.replace(/^\uFEFF/u, "")]))});`,
+      );
+    } else line(`const _g_source = ${quoted(options.sourceText?.replace(/^\uFEFF/, "") ?? "")};`);
     line(`function _g_write(fd, text) {
   const bytes = new TextEncoder().encode(text);
   let offset = 0;
@@ -245,8 +257,9 @@ export function generateJavaScript(
     if (d.path !== null && d.range !== null) {
       const p = d.range.start;
       text += "  " + d.path + ":" + p.line + ":" + p.column + "\\n";
-      const sourceLine = _g_source.split(/\\r\\n|\\r|\\n/)[p.line - 1];
-      if (sourceLine !== undefined && _g_source.length > 0) {
+      const source = ${options.sourceFiles ? '_g_sources.get(d.path) ?? ""' : "_g_source"};
+      const sourceLine = source.split(/\\r\\n|\\r|\\n/)[p.line - 1];
+      if (sourceLine !== undefined && source.length > 0) {
         const width = d.range.end.line === p.line ? Math.max(1, d.range.end.column - p.column) : 1;
         text += sourceLine + "\\n" + " ".repeat(p.column - 1) + "^".repeat(width) + "\\n";
       }
@@ -324,14 +337,18 @@ ${signatures
     indent--;
     line("}");
   } else {
-    line(
-      `process.exitCode = _g.run(_g_f${program.entrypoint.id});`,
-      program.entrypoint.span ?? program.ast.span,
-    );
+    const entrypoint = program.entrypoint;
+    if (entrypoint === null) throw new Error("Node code generation requires an entrypoint");
+    line(`process.exitCode = _g.run(_g_f${entrypoint.id});`, entrypoint.span ?? program.ast.span);
   }
 
   let priorLine = 0;
   let priorColumn = 0;
+  let priorSource = 0;
+  const sourceFiles = options.sourceFiles ?? [
+    { path: program.path, text: options.sourceText ?? "" },
+  ];
+  const sourceIndexes = new Map(sourceFiles.map(({ path }, index) => [path, index]));
   const segments = new Map(mappings.map((mapping) => [mapping.generatedLine, mapping]));
   const encoded = lines
     .map((_, i) => {
@@ -339,11 +356,13 @@ ${signatures
       if (!mapping) return "";
       const originalLine = mapping.source.start.line - 1;
       const originalColumn = mapping.source.start.column - 1;
+      const sourceIndex = sourceIndexes.get(mapping.sourcePath) ?? 0;
       const segment =
         vlq(mapping.generatedColumn) +
-        vlq(0) +
+        vlq(sourceIndex - priorSource) +
         vlq(originalLine - priorLine) +
         vlq(originalColumn - priorColumn);
+      priorSource = sourceIndex;
       priorLine = originalLine;
       priorColumn = originalColumn;
       return segment;
@@ -352,8 +371,8 @@ ${signatures
   const sourceMap: JavaScriptSourceMap = {
     version: 3,
     file: options.fileName ?? "output.mjs",
-    sources: [program.path],
-    sourcesContent: [options.sourceText ?? null],
+    sources: sourceFiles.map(({ path }) => path),
+    sourcesContent: sourceFiles.map(({ text }) => text),
     names: [],
     mappings: encoded,
   };
