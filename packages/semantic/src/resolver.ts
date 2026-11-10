@@ -14,7 +14,7 @@ import { limitDiagnostics } from "./diagnostics.js";
 
 export type SymbolId = number;
 export type ScopeId = number;
-export type LanguageVersion = "0.1" | "0.2" | "0.3";
+export type LanguageVersion = "0.1" | "0.2" | "0.3" | "0.4";
 
 export interface FunctionSignature {
   /** A null parameter is the single built-in polymorphic 출력 argument. */
@@ -33,6 +33,19 @@ export interface FunctionSymbol extends SymbolBase {
   readonly kind: "function" | "prelude";
   readonly signature: FunctionSignature;
   readonly declaration: FunctionDeclarationNode | null;
+  readonly sourcePath: string | null;
+}
+
+export interface ProjectImportResolution {
+  readonly path: string;
+  readonly alias: IdentifierName;
+  readonly functions: ReadonlyMap<string, FunctionSymbol>;
+  readonly exports: ReadonlyMap<string, FunctionSymbol>;
+}
+
+export interface ProjectResolutionOptions {
+  readonly imports: readonly ProjectImportResolution[];
+  readonly entrypoint: "required" | "optional" | "forbidden";
 }
 
 export interface ValueSymbol extends SymbolBase {
@@ -72,6 +85,7 @@ export function resolveProgram(
   ast: ProgramNode,
   path = "<stdin>",
   languageVersion: LanguageVersion = "0.1",
+  project?: ProjectResolutionOptions,
 ): ResolutionResult {
   const symbols = new Map<SymbolId, SemanticSymbol>();
   const scopes = new Map<ScopeId, LexicalScope>();
@@ -83,7 +97,7 @@ export function resolveProgram(
   let scopeId = 0;
 
   function report(
-    code: "GE2001" | "GE2002" | "GE2003" | "GE2004" | "GE2011",
+    code: "GE2001" | "GE2002" | "GE2003" | "GE2004" | "GE2008" | "GE2009" | "GE2010" | "GE2011",
     message: string,
     span: SourceSpan,
     prior?: SemanticSymbol,
@@ -99,27 +113,36 @@ export function resolveProgram(
           code === "GE2003"
             ? "정확히 하나의 비공개 `함수 시작() -> 없음`을 선언하세요."
             : code === "GE2004"
-              ? "`--language-version 0.3`을 선택하세요."
+              ? "`--language-version 0.3` 또는 `0.4`를 선택하세요."
               : code === "GE2011"
                 ? "모듈 문법은 아직 프로젝트 컴파일에서만 지원됩니다. 단일 파일 검사에는 v0.1-v0.3 문법을 사용하세요."
                 : "현재 범위의 선언과 이름을 확인하세요.",
         related: prior?.span
-          ? [{ message: "이전에 선언한 위치입니다.", path, range: prior.span }]
+          ? [
+              {
+                message: "이전에 선언한 위치입니다.",
+                path:
+                  prior.kind === "function" || prior.kind === "prelude"
+                    ? (prior.sourcePath ?? path)
+                    : path,
+                range: prior.span,
+              },
+            ]
           : [],
       }),
     );
   }
 
-  for (const declaration of ast.imports) {
-    report("GE2011", "단일 파일 컴파일은 다른 모듈을 가져올 수 없습니다.", declaration.pathSpan);
-  }
+  if (!project)
+    for (const declaration of ast.imports)
+      report("GE2011", "단일 파일 컴파일은 다른 모듈을 가져올 수 없습니다.", declaration.pathSpan);
 
   const prelude: [string, readonly (GeulType | null)[], GeulType][] = [
     ["출력", [null], UNIT],
     ["정수로", [REAL], INTEGER],
     ["실수로", [INTEGER], REAL],
   ];
-  if (languageVersion === "0.2" || languageVersion === "0.3") {
+  if (languageVersion === "0.2" || languageVersion === "0.3" || languageVersion === "0.4") {
     prelude.push(
       ["문자열길이", [STRING], INTEGER],
       ["문자열포함", [STRING, STRING], BOOLEAN],
@@ -135,6 +158,7 @@ export function resolveProgram(
       scopeId: 0,
       span: null,
       declaration: null,
+      sourcePath: null,
       signature: { parameters, returnType },
     };
     functions.set(name, symbol);
@@ -150,6 +174,7 @@ export function resolveProgram(
       scopeId: 0,
       span: declaration.name.span,
       declaration,
+      sourcePath: path,
       signature: {
         parameters: declaration.parameters.map((p) => typeFromNode(p.type)),
         returnType: typeFromNode(declaration.returnType),
@@ -160,7 +185,7 @@ export function resolveProgram(
     const previous = functions.get(name);
     if (previous)
       report(
-        "GE2002",
+        project ? "GE2008" : "GE2002",
         `함수 이름 '${name}'이 이미 선언되어 있습니다.`,
         declaration.name.span,
         previous,
@@ -168,7 +193,7 @@ export function resolveProgram(
     else {
       functions.set(name, symbol);
       if (declaration.visibility === "public") {
-        if (languageVersion === "0.3") exports.push(symbol);
+        if (languageVersion === "0.3" || languageVersion === "0.4") exports.push(symbol);
         else {
           report(
             "GE2004",
@@ -180,8 +205,32 @@ export function resolveProgram(
     }
   }
 
+  const importedModules = new Map<string, ProjectImportResolution>();
+  for (const imported of project?.imports ?? []) {
+    const alias = imported.alias.normalized;
+    importedModules.set(alias, imported);
+    const prior = functions.get(alias);
+    if (prior) {
+      report(
+        "GE2008",
+        `모듈 별칭 '${imported.alias.raw}'이(가) 기존 함수 또는 prelude 이름과 충돌합니다.`,
+        imported.alias.span,
+        prior,
+      );
+    }
+  }
+
   const entries = ast.functions.filter((f) => f.name.normalized === "시작");
-  if (entries.length === 0) report("GE2003", "진입 함수 '시작'이 없습니다.", ast.span);
+  if (project) {
+    if (project.entrypoint === "required" && entries.length === 0)
+      report("GE2010", "진입 모듈에 진입 함수 '시작'이 없습니다.", ast.span);
+    if (project.entrypoint === "forbidden" && entries.length > 0)
+      report(
+        "GE2010",
+        "가져온 모듈은 진입 함수 '시작'을 선언할 수 없습니다.",
+        entries[0]!.name.span,
+      );
+  } else if (entries.length === 0) report("GE2003", "진입 함수 '시작'이 없습니다.", ast.span);
   for (const [index, entry] of entries.entries()) {
     const type = typeFromNode(entry.returnType);
     if (
@@ -192,7 +241,7 @@ export function resolveProgram(
       type.name !== "없음"
     ) {
       report(
-        "GE2003",
+        project ? "GE2010" : "GE2003",
         "진입 함수는 유일한 `시작() -> 없음`이어야 합니다.",
         entry.name.span,
         index > 0 ? functions.get("시작") : undefined,
@@ -223,6 +272,36 @@ export function resolveProgram(
     const symbol = call ? functions.get(name.normalized) : lookup(name.normalized, scope);
     if (!symbol) report("GE2001", `정의되지 않은 이름 '${name.raw}'입니다.`, name.span);
     else references.set(name, symbol.id);
+  }
+  function useQualified(namespace: IdentifierName, name: IdentifierName) {
+    const imported = importedModules.get(namespace.normalized);
+    if (!imported) {
+      report("GE2009", `가져오지 않은 모듈 별칭 '${namespace.raw}'입니다.`, namespace.span);
+      return;
+    }
+    const target = imported.functions.get(name.normalized);
+    const exported = imported.exports.get(name.normalized);
+    if (!exported || name.normalized === "시작") {
+      const privateFunction = target?.declaration?.visibility === "private" ? target : undefined;
+      const memberName = privateFunction ? "비공개 함수" : "공개 함수";
+      const diagnostic = createDiagnostic({
+        code: "GE2009",
+        phase: "resolve",
+        message: `모듈 '${namespace.raw}'에 가져올 수 있는 ${memberName} '${name.raw}'이(가) 없습니다.`,
+        path,
+        range: name.span,
+        help: "가져온 모듈의 공개 함수 이름을 확인하세요.",
+        related: privateFunction?.span
+          ? [{ message: "대상 함수 선언입니다.", path: imported.path, range: privateFunction.span }]
+          : [],
+      });
+      diagnostics.push(diagnostic);
+      return;
+    }
+
+    const importedSymbol: FunctionSymbol = { ...exported, id: symbolId++, scopeId: 0 };
+    symbols.set(importedSymbol.id, importedSymbol);
+    references.set(name, importedSymbol.id);
   }
   function declare(
     name: IdentifierName,
@@ -259,11 +338,13 @@ export function resolveProgram(
         return;
       case "CallExpression":
         if (node.namespace !== null) {
-          report(
-            "GE2011",
-            "한정 함수 호출은 아직 프로젝트 컴파일에서 지원되지 않습니다.",
-            node.namespace.span,
-          );
+          if (project) useQualified(node.namespace, node.callee);
+          else
+            report(
+              "GE2011",
+              "한정 함수 호출은 아직 프로젝트 컴파일에서 지원되지 않습니다.",
+              node.namespace.span,
+            );
         } else use(node.callee, scope, true);
         node.arguments.forEach((n) => expression(n, scope));
         return;

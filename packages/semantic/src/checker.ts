@@ -15,6 +15,7 @@ import {
   type SymbolId,
   type FunctionSymbol,
   type LanguageVersion,
+  type ProjectResolutionOptions,
 } from "./resolver.js";
 import {
   BOOLEAN,
@@ -39,10 +40,27 @@ export interface TypedProgram extends Omit<ResolvedProgram, "entrypoint"> {
   readonly signedMinimumLiterals: ReadonlySet<UnaryExpressionNode>;
 }
 
+export interface ProjectTypedProgram extends Omit<TypedProgram, "entrypoint"> {
+  readonly entrypoint: FunctionSymbol | null;
+}
+
 export type AnalysisResult =
   | {
       readonly success: true;
       readonly program: TypedProgram;
+      readonly diagnostics: readonly [];
+      readonly suppressedCount: 0;
+    }
+  | {
+      readonly success: false;
+      readonly diagnostics: readonly Diagnostic[];
+      readonly suppressedCount: number;
+    };
+
+export type ProjectAnalysisResult =
+  | {
+      readonly success: true;
+      readonly program: ProjectTypedProgram;
       readonly diagnostics: readonly [];
       readonly suppressedCount: 0;
     }
@@ -57,13 +75,45 @@ const MIN_MAGNITUDE = 1n << 63n;
 
 export function analyzeProgram(
   ast: ProgramNode,
+  path?: string,
+  languageVersion?: LanguageVersion,
+): AnalysisResult;
+export function analyzeProgram(
+  ast: ProgramNode,
+  path: string,
+  languageVersion: LanguageVersion,
+  project: ProjectResolutionOptions,
+): ProjectAnalysisResult;
+export function analyzeProgram(
+  ast: ProgramNode,
   path = "<stdin>",
   languageVersion: LanguageVersion = "0.1",
-): AnalysisResult {
-  return checkResolvedProgram(resolveProgram(ast, path, languageVersion));
+  project?: ProjectResolutionOptions,
+): AnalysisResult | ProjectAnalysisResult {
+  const resolution = resolveProgram(ast, path, languageVersion, project);
+  return project
+    ? checkProjectResolvedProgram(resolution, project.entrypoint === "required")
+    : checkResolvedProgram(resolution);
 }
 
-export function checkResolvedProgram(resolution: ResolutionResult): AnalysisResult {
+export function checkProjectResolvedProgram(
+  resolution: ResolutionResult,
+  requireEntrypoint: boolean,
+): ProjectAnalysisResult {
+  return requireEntrypoint
+    ? (checkResolvedProgram(resolution) as ProjectAnalysisResult)
+    : checkResolvedProgram(resolution, false);
+}
+
+export function checkResolvedProgram(resolution: ResolutionResult): AnalysisResult;
+export function checkResolvedProgram(
+  resolution: ResolutionResult,
+  requireEntrypoint: false,
+): ProjectAnalysisResult;
+export function checkResolvedProgram(
+  resolution: ResolutionResult,
+  requireEntrypoint = true,
+): AnalysisResult | ProjectAnalysisResult {
   const { program } = resolution;
   const diagnostics: Diagnostic[] = [...resolution.diagnostics];
   const expressionTypes = new Map<ExpressionNode, GeulType>();
@@ -127,7 +177,6 @@ export function checkResolvedProgram(resolution: ResolutionResult): AnalysisResu
         return s ? (symbolTypes.get(s.id) ?? ERROR) : ERROR;
       }
       case "CallExpression": {
-        if (node.namespace !== null) return ERROR;
         const s = resolved(node.callee);
         return s && (s.kind === "function" || s.kind === "prelude")
           ? s.signature.returnType
@@ -295,11 +344,6 @@ export function checkResolvedProgram(resolution: ResolutionResult): AnalysisResu
         break;
       }
       case "CallExpression": {
-        if (node.namespace !== null) {
-          node.arguments.forEach((argument) => check(argument));
-          type = ERROR;
-          break;
-        }
         const symbol = resolved(node.callee);
         if (!symbol || (symbol.kind !== "function" && symbol.kind !== "prelude")) {
           node.arguments.forEach((a) => check(a));
@@ -477,19 +521,30 @@ export function checkResolvedProgram(resolution: ResolutionResult): AnalysisResu
       );
   }
   const limited = limitDiagnostics(diagnostics, resolution.suppressedCount);
-  if (limited.diagnostics.length > 0 || program.entrypoint === null)
+  if (limited.diagnostics.length > 0 || (requireEntrypoint && program.entrypoint === null))
     return { success: false, ...limited };
+  const { entrypoint, ...resolvedProgram } = program;
+  const typedProgram = {
+    ...resolvedProgram,
+    checked: true as const,
+    expressionTypes,
+    symbolTypes,
+    signedMinimumLiterals,
+  };
+  if (!requireEntrypoint)
+    return {
+      success: true,
+      diagnostics: [],
+      suppressedCount: 0,
+      program: { ...typedProgram, entrypoint },
+    };
   return {
     success: true,
     diagnostics: [],
     suppressedCount: 0,
     program: {
-      ...program,
-      entrypoint: program.entrypoint,
-      checked: true,
-      expressionTypes,
-      symbolTypes,
-      signedMinimumLiterals,
+      ...typedProgram,
+      entrypoint: entrypoint!,
     },
   };
 }

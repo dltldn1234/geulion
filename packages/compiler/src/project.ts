@@ -5,6 +5,14 @@ import {
   type ProgramNode,
   type SourceSpan,
 } from "@geulion/ast";
+import {
+  analyzeProgram,
+  type FunctionSymbol,
+  type ProjectAnalysisResult,
+  type ProjectImportResolution,
+  type ProjectResolutionOptions,
+  typeFromNode,
+} from "@geulion/semantic";
 import { parseSource } from "./frontend.js";
 
 /** Source map keys and entryPath are canonical, root-relative `.geul` paths. */
@@ -19,6 +27,13 @@ export interface ProjectSourceInput {
 export interface ProjectModule {
   readonly path: string;
   readonly ast: ProgramNode;
+  readonly imports: readonly ProjectModuleImport[];
+}
+
+export interface ProjectModuleImport {
+  readonly path: string;
+  readonly alias: ImportDeclarationNode["alias"];
+  readonly pathSpan: ImportDeclarationNode["pathSpan"];
 }
 
 export interface ProjectSourceGraph {
@@ -43,6 +58,24 @@ export interface ProjectSourceGraphFailure {
 
 export type ProjectSourceGraphResult = ProjectSourceGraphSuccess | ProjectSourceGraphFailure;
 
+export interface TypedProjectModule {
+  readonly path: string;
+  readonly program: Extract<ProjectAnalysisResult, { success: true }>["program"];
+}
+
+export type ProjectAnalysis =
+  | {
+      readonly success: true;
+      readonly modules: readonly TypedProjectModule[];
+      readonly diagnostics: readonly [];
+      readonly suppressedCount: 0;
+    }
+  | {
+      readonly success: false;
+      readonly diagnostics: readonly Diagnostic[];
+      readonly suppressedCount: number;
+    };
+
 type PathFailure = {
   readonly code: "GE2006" | "GE2007";
   readonly message: string;
@@ -60,6 +93,79 @@ type PendingModule = {
 };
 
 const MAX_DIAGNOSTICS = 100;
+
+function moduleFunctionSymbols(module: ProjectModule): {
+  readonly functions: ReadonlyMap<string, FunctionSymbol>;
+  readonly exports: ReadonlyMap<string, FunctionSymbol>;
+} {
+  const functions = new Map<string, FunctionSymbol>();
+  const exports = new Map<string, FunctionSymbol>();
+  for (const [index, declaration] of module.ast.functions.entries()) {
+    const name = declaration.name.normalized;
+    if (functions.has(name)) continue;
+    const symbol: FunctionSymbol = {
+      id: index,
+      name,
+      kind: "function",
+      scopeId: 0,
+      span: declaration.name.span,
+      declaration,
+      sourcePath: module.path,
+      signature: {
+        parameters: declaration.parameters.map((parameter) => typeFromNode(parameter.type)),
+        returnType: typeFromNode(declaration.returnType),
+      },
+    };
+    functions.set(name, symbol);
+    if (declaration.visibility === "public") exports.set(name, symbol);
+  }
+  return { functions, exports };
+}
+
+/** Resolves and type-checks every module after collecting the complete signature graph. */
+export function analyzeProjectSourceGraph(graph: ProjectSourceGraph): ProjectAnalysis {
+  const symbols = new Map(
+    graph.modules.map((module) => [module.path, moduleFunctionSymbols(module)]),
+  );
+  const results: TypedProjectModule[] = [];
+  const diagnostics: Diagnostic[] = [];
+  let suppressedCount = 0;
+
+  for (const module of graph.modules) {
+    const imports: ProjectImportResolution[] = [];
+    for (const projectImport of module.imports) {
+      const target = symbols.get(projectImport.path);
+      if (target) imports.push({ path: projectImport.path, alias: projectImport.alias, ...target });
+      else
+        diagnostics.push(
+          createDiagnostic({
+            code: "GE2006",
+            phase: "resolve",
+            message: `가져온 모듈 '${projectImport.path}'이(가) 프로젝트 그래프에 없습니다.`,
+            path: module.path,
+            range: projectImport.pathSpan,
+            help: "프로젝트 source graph를 다시 불러오세요.",
+          }),
+        );
+    }
+    const options: ProjectResolutionOptions = {
+      imports,
+      entrypoint: module.path === graph.entryPath ? "required" : "forbidden",
+    };
+    const result = analyzeProgram(module.ast, module.path, "0.4", options);
+    if (result.success) results.push({ path: module.path, program: result.program });
+    else {
+      diagnostics.push(...result.diagnostics);
+      suppressedCount += result.suppressedCount;
+    }
+  }
+
+  const limited = diagnostics.slice(0, MAX_DIAGNOSTICS);
+  suppressedCount += Math.max(0, diagnostics.length - MAX_DIAGNOSTICS);
+  if (limited.length > 0 || suppressedCount > 0)
+    return { success: false, diagnostics: limited, suppressedCount };
+  return { success: true, modules: results, diagnostics: [], suppressedCount: 0 };
+}
 
 function hasControlCharacter(value: string): boolean {
   return Array.from(value).some((character) => {
@@ -215,11 +321,9 @@ export function loadProjectSourceGraph(input: ProjectSourceInput): ProjectSource
       continue;
     }
 
-    const module: ProjectModule = { path: item.path, ast: parsed.ast };
-    modules.set(item.path, module);
-
     const importsByPath = new Map<string, ImportDeclarationNode>();
     const importsByAlias = new Map<string, ImportDeclarationNode>();
+    const resolvedImports: ProjectModuleImport[] = [];
     for (const declaration of parsed.ast.imports) {
       const resolved = resolveImportPath(item.path, declaration.path);
       if ("code" in resolved) {
@@ -258,8 +362,15 @@ export function loadProjectSourceGraph(input: ProjectSourceInput): ProjectSource
 
       importsByPath.set(resolved.path, declaration);
       importsByAlias.set(declaration.alias.normalized, declaration);
+      resolvedImports.push({
+        path: resolved.path,
+        alias: declaration.alias,
+        pathSpan: declaration.pathSpan,
+      });
       pending.push({ path: resolved.path, requestedBy: { importerPath: item.path, declaration } });
     }
+
+    modules.set(item.path, { path: item.path, ast: parsed.ast, imports: resolvedImports });
   }
 
   if (diagnostics.length > 0 || suppressedCount > 0) {
