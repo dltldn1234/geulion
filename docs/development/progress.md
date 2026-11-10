@@ -116,18 +116,18 @@
 - Issue #142 adds the pure project module source-graph loader from a finite source map. Full workspace tests (26 files / 305 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check` passed locally; PR #143 CI run `42711263062` passed and merged as `b4142f4276d56c3bffebd24330bc4ec437d8fedf`; Issue #142 is closed. Filesystem access and symlink checks remain separate follow-up work.
 - Issue #144 adds project-wide signature collection before body analysis, NFC-normalized exports and aliases, explicit qualified-call resolution, visibility and entrypoint checks, and cross-module argument type checking. Local verification passed: full workspace tests (27 files / 318 tests), TypeScript build and test typecheck, ESLint, Prettier, and `git diff --check`. PR #145 CI run `42746930755` passed and merged as `93280e7c74d88efee47250d48d522c8eb2b0546f`; Issue #144 is closed.
 
-- Issue #146 covers deterministic multi-module JavaScript emission from typed v0.4 graphs, cross-module symbol identity, Node/browser target behavior, multi-source source maps, and module-specific runtime diagnostic paths; PR/CI are pending.
+- Issue #146 adds deterministic multi-module JavaScript emission from typed v0.4 graphs, globally unique cross-module identities, Node/browser behavior, multi-source source maps, and module-specific runtime diagnostic paths. PR #147 CI run `42748540840` passed and merged as `b0559d09bbcf04b59fad52d06d91ad5f82599a4b`; Issue #146 is closed.
 
 ## Known limitations
 
-- The v0.2 increment covers only four pure string queries. Input, clocks, timers, randomness, persistence, filesystem access, browser APIs, and FFI are not implemented. The v0.4 module contract, parser/AST groundwork, pure source graph, and cross-module semantic resolution are merged. Issue #146 is implementing project code generation; CLI project APIs and module-aware Language Server navigation remain unimplemented.
+- The v0.2 increment covers only four pure string queries. Input, clocks, timers, randomness, persistence, filesystem access, browser APIs, and FFI are not implemented. The v0.4 module contract, parser/AST groundwork, pure source graph, cross-module semantic resolution, and project JavaScript generation are merged. Issue #148 is implementing filesystem loading and CLI project commands; module-aware Language Server navigation remains unimplemented.
 - Phase 7's playable Idle slice and capped offline-production/save migration are merged. Phase 8 has language basics, CLI commands, diagnostics, completions, signature help, hover, in-file navigation/references/rename, and the merged Issue #77 protocol server. Phase 9's local Playground is merged; its live browser UI still needs a local run where socket binding is available. Issue #75's Extension Host suite and Issue #79 Phase 10 protocol hardening have merged. Workspace symbol search covers open and closed `.geul` functions; unique-name cross-file definition/reference lookup is currently an editor aid and does not change compiler resolution. The current implementation scans workspace files for each symbol request, so very large workspaces may need an indexed follow-up.
 - The Node target remains Node-specific and auto-runs `시작`; only the explicit browser target produces a host-driven module without automatic entrypoint execution.
 
 ## Next
 
-1. Complete Issue #146 deterministic multi-module JavaScript generation and merge after CI.
-2. Add a follow-up Issue for project filesystem loading and CLI `check`/`emit-js`/`run`/`build`; preserve the v0.1–v0.3 contracts.
+1. Complete Issue #148 project filesystem loading and CLI `check`/`emit-js`/`run`/`build`; preserve the v0.1–v0.3 contracts.
+2. Add module-aware Language Server navigation after CLI project loading is available.
 
 ## Commit growth tracking
 
