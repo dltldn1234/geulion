@@ -763,6 +763,36 @@ function clearProjectDiagnostics(root: string): void {
   projectEntriesByRoot.delete(root);
 }
 
+function projectAnalysisContexts(document: Document) {
+  const root = projectRootForPath(documentPath(document.uri));
+  const { sources } = projectSourceSnapshot(root);
+  const modulePath = relative(root, documentPath(document.uri)).split(sep).join("/");
+  const entries = projectEntriesByRoot.get(root) ?? new Set<string>();
+  for (const [path, source] of sources) {
+    const parsed = parseSource({ path, source });
+    if (parsed.success && parsed.ast.functions.some((fn) => fn.name.normalized === "시작"))
+      entries.add(path);
+  }
+  for (const entry of [...entries]) if (!sources.has(entry)) entries.delete(entry);
+  projectEntriesByRoot.set(root, entries);
+
+  const contexts = [];
+  for (const entryPath of entries) {
+    const loaded = loadProjectSourceGraph({
+      entryPath,
+      rootPath: root,
+      sources,
+      languageVersion: "0.4",
+    });
+    if (!loaded.success || !loaded.graph.modules.some(({ path }) => path === modulePath)) continue;
+    const analysis = analyzeProjectSourceGraph(loaded.graph);
+    if (!analysis.success) continue;
+    const module = analysis.modules.find(({ path }) => path === modulePath);
+    if (module) contexts.push({ root, graph: loaded.graph, analysis, module, sources });
+  }
+  return contexts;
+}
+
 function publishDiagnostics(document: Document): void {
   if (languageVersion === "0.4") {
     publishProjectDiagnostics(document);
@@ -1006,6 +1036,17 @@ function uniqueWorkspaceFunction(
 }
 
 function currentAnalysis(document: Document) {
+  if (languageVersion === "0.4") {
+    const contexts = projectAnalysisContexts(document);
+    const first = contexts[0];
+    return first
+      ? {
+          program: first.module.program,
+          projectContexts: contexts,
+          projectModulePath: first.module.path,
+        }
+      : undefined;
+  }
   const result = analyze(document);
   return result.success ? result : undefined;
 }
@@ -1016,17 +1057,340 @@ function referencesAt(document: Document, offset: number) {
   for (const [reference, symbolId] of analysis.program.references) {
     if (offset >= reference.span.start.utf16Offset && offset < reference.span.end.utf16Offset) {
       const symbol = analysis.program.symbols.get(symbolId);
-      return symbol ? { analysis, reference, symbol, symbolId } : undefined;
+      return symbol
+        ? {
+            analysis,
+            reference,
+            symbol,
+            symbolId,
+            ...("projectContexts" in analysis
+              ? {
+                  projectContexts: analysis.projectContexts,
+                  projectModulePath: analysis.projectModulePath,
+                }
+              : {}),
+          }
+        : undefined;
     }
   }
   return undefined;
+}
+
+type ProjectReferenceMatch = NonNullable<ReturnType<typeof referencesAt>>;
+
+function projectSymbolKey(
+  symbol: ProjectReferenceMatch["symbol"],
+  modulePath: string,
+): string | undefined {
+  if (!symbol.span || symbol.kind !== "function") return undefined;
+  const path = symbol.sourcePath ?? modulePath;
+  return `${path}\u0000${symbol.span.start.utf16Offset}:${symbol.span.end.utf16Offset}`;
+}
+
+function projectReferences(match: ProjectReferenceMatch) {
+  if (!match.projectContexts) return [];
+  const key = projectSymbolKey(match.symbol, match.projectModulePath ?? "");
+  const found = new Map<string, { path: string; reference: IdentifierName; text: string }>();
+  for (const context of match.projectContexts) {
+    for (const module of context.analysis.modules) {
+      if (!key && module.path !== match.projectModulePath) continue;
+      for (const [reference, symbolId] of module.program.references) {
+        const symbol = module.program.symbols.get(symbolId);
+        if (
+          !symbol ||
+          (key ? projectSymbolKey(symbol, module.path) !== key : symbolId !== match.symbolId)
+        )
+          continue;
+        const source = context.sources.get(module.path);
+        if (!source) continue;
+        let text: string;
+        try {
+          text = new TextDecoder("utf-8", { fatal: true }).decode(source);
+        } catch {
+          continue;
+        }
+        const referenceKey = `${module.path}\u0000${reference.span.start.utf16Offset}:${reference.span.end.utf16Offset}`;
+        found.set(referenceKey, { path: module.path, reference, text });
+      }
+    }
+  }
+  return [...found.values()].sort(
+    (left, right) =>
+      left.path.localeCompare(right.path) ||
+      left.reference.span.start.utf16Offset - right.reference.span.start.utf16Offset,
+  );
+}
+
+function projectFunctionDefinition(match: ProjectReferenceMatch) {
+  if (!match.projectContexts || match.symbol.kind !== "function" || !match.symbol.span)
+    return undefined;
+  const path = match.symbol.sourcePath ?? match.projectModulePath;
+  if (!path) return undefined;
+  for (const context of match.projectContexts) {
+    const source = context.sources.get(path);
+    if (!source) continue;
+    try {
+      const text = new TextDecoder("utf-8", { fatal: true }).decode(source);
+      return {
+        uri: pathToFileURL(join(context.root, ...path.split("/"))).toString(),
+        range: sourceRange(match.symbol.span, text),
+      };
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
+function projectRename(match: ProjectReferenceMatch, newName: string) {
+  if (!match.projectContexts) return undefined;
+  const references = projectReferences(match);
+  if (references.length === 0) return undefined;
+  const texts = new Map<string, string>();
+  for (const context of match.projectContexts) {
+    for (const [path, source] of context.sources) {
+      if (texts.has(path)) continue;
+      try {
+        texts.set(path, new TextDecoder("utf-8", { fatal: true }).decode(source));
+      } catch {
+        return undefined;
+      }
+    }
+  }
+  const editsByPath = new Map<string, { reference: IdentifierName; text: string }[]>();
+  for (const item of references) {
+    const edits = editsByPath.get(item.path) ?? [];
+    edits.push({ reference: item.reference, text: item.text });
+    editsByPath.set(item.path, edits);
+  }
+  for (const [path, edits] of editsByPath) {
+    let text = texts.get(path);
+    if (text === undefined) return undefined;
+    for (const { reference } of [...edits].sort(
+      (left, right) =>
+        right.reference.span.start.utf16Offset - left.reference.span.start.utf16Offset,
+    ))
+      text =
+        text.slice(0, reference.span.start.utf16Offset) +
+        newName +
+        text.slice(reference.span.end.utf16Offset);
+    texts.set(path, text);
+  }
+  for (const context of match.projectContexts) {
+    const sources = new Map(
+      [...context.sources].map(([path, source]) => [
+        path,
+        new TextEncoder().encode(texts.get(path) ?? new TextDecoder().decode(source)),
+      ]),
+    );
+    const loaded = loadProjectSourceGraph({
+      entryPath: context.graph.entryPath,
+      rootPath: context.root,
+      sources,
+      languageVersion: "0.4",
+    });
+    if (!loaded.success || !analyzeProjectSourceGraph(loaded.graph).success) return undefined;
+  }
+  const changes: Record<string, { range: Range; newText: string }[]> = {};
+  for (const [path, edits] of editsByPath) {
+    const context: (typeof match.projectContexts)[number] | undefined = match.projectContexts.find(
+      (candidate) => candidate.sources.has(path),
+    );
+    const text = texts.get(path);
+    if (!context || text === undefined) return undefined;
+    const uri = pathToFileURL(join(context.root, ...path.split("/"))).toString();
+    changes[uri] = edits.map(({ reference, text: original }) => ({
+      range: sourceRange(reference.span, original),
+      newText: newName,
+    }));
+  }
+  return { changes };
+}
+
+function visitQualifiedCalls(value: unknown, visit: (call: CallExpressionNode) => void): void {
+  if (Array.isArray(value)) {
+    value.forEach((child) => visitQualifiedCalls(child, visit));
+    return;
+  }
+  if (typeof value !== "object" || value === null) return;
+  if ("kind" in value && value.kind === "CallExpression") {
+    const call = value as CallExpressionNode;
+    if (call.namespace !== null) visit(call);
+  }
+  Object.values(value).forEach((child) => visitQualifiedCalls(child, visit));
+}
+
+function projectAliasAt(document: Document, offset: number) {
+  const contexts = projectAnalysisContexts(document);
+  for (const context of contexts) {
+    const module = context.graph.modules.find(({ path }) => path === context.module.path);
+    if (!module) continue;
+    for (const declaration of module.ast.imports) {
+      if (
+        offset >= declaration.alias.span.start.utf16Offset &&
+        offset < declaration.alias.span.end.utf16Offset
+      )
+        return {
+          context,
+          alias: declaration.alias,
+          declaration,
+          reference: declaration.alias,
+          isDeclaration: true,
+          contexts,
+          modulePath: module.path,
+        };
+      let found: CallExpressionNode | undefined;
+      visitQualifiedCalls(module.ast, (call) => {
+        if (
+          call.namespace?.normalized === declaration.alias.normalized &&
+          offset >= call.namespace.span.start.utf16Offset &&
+          offset < call.namespace.span.end.utf16Offset
+        )
+          found = call;
+      });
+      if (found?.namespace)
+        return {
+          context,
+          alias: declaration.alias,
+          declaration,
+          reference: found.namespace,
+          isDeclaration: false,
+          contexts,
+          modulePath: module.path,
+        };
+    }
+  }
+  return undefined;
+}
+
+function projectAliasReferences(
+  context: ReturnType<typeof projectAnalysisContexts>[number],
+  modulePath: string,
+  aliasName: string,
+) {
+  const module = context.graph.modules.find(({ path }) => path === modulePath);
+  if (!module) return [];
+  const declaration = module.ast.imports.find(({ alias }) => alias.normalized === aliasName);
+  if (!declaration) return [];
+  const references: IdentifierName[] = [declaration.alias];
+  visitQualifiedCalls(module.ast, (call) => {
+    if (call.namespace?.normalized === aliasName) references.push(call.namespace);
+  });
+  return references;
+}
+
+function projectAliasDefinition(match: NonNullable<ReturnType<typeof projectAliasAt>>) {
+  const importPath = match.context.module.program.ast.imports.find(
+    ({ alias }) => alias.normalized === match.alias.normalized,
+  );
+  const resolvedImport = match.context.graph.modules
+    .find(({ path }) => path === match.modulePath)
+    ?.imports.find(({ alias }) => alias.normalized === match.alias.normalized);
+  const targetPath = resolvedImport?.path ?? importPath?.path;
+  const target = targetPath
+    ? match.context.graph.modules.find(({ path }) => path === targetPath)
+    : undefined;
+  if (!target) return null;
+  const bytes = match.context.sources.get(target.path);
+  if (!bytes) return null;
+  try {
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    return {
+      uri: pathToFileURL(join(match.context.root, ...target.path.split("/"))).toString(),
+      range: sourceRange(target.ast.span, text),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function projectImportedExports(
+  context: ReturnType<typeof projectAnalysisContexts>[number],
+  modulePath: string,
+  alias: string,
+) {
+  const importedPath = context.graph.modules
+    .find(({ path }) => path === modulePath)
+    ?.imports.find(({ alias: importedAlias }) => importedAlias.normalized === alias)?.path;
+  return importedPath
+    ? (context.analysis.modules.find(({ path }) => path === importedPath)?.program.exports ?? [])
+    : [];
+}
+
+function formatProjectFunction(
+  symbol: NonNullable<ReturnType<typeof projectImportedExports>[number]>,
+) {
+  const parameters = symbol.signature.parameters.map((parameter, index) => {
+    const name = symbol.declaration?.parameters[index]?.name.raw ?? `매개변수${index + 1}`;
+    return `${name}: ${parameter ? typeName(parameter) : "임의"}`;
+  });
+  return `${symbol.name}(${parameters.join(", ")}) -> ${typeName(symbol.signature.returnType)}`;
+}
+
+function importedFunctionAt(document: Document, active: ReturnType<typeof activeCall>) {
+  if (!active?.namespace) return undefined;
+  const contexts = projectAnalysisContexts(document);
+  for (const context of contexts) {
+    const symbol = projectImportedExports(context, context.module.path, active.namespace).find(
+      (candidate) => candidate.name === active.name,
+    );
+    if (symbol) return { context, symbol };
+  }
+  return undefined;
+}
+
+function projectAliasRename(
+  match: NonNullable<ReturnType<typeof projectAliasAt>>,
+  newName: string,
+) {
+  const path = match.modulePath;
+  const source = match.context.sources.get(path);
+  if (!source) return null;
+  let text: string;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(source);
+  } catch {
+    return null;
+  }
+  const originalText = text;
+  const references = projectAliasReferences(match.context, path, match.alias.normalized);
+  for (const reference of [...references].sort(
+    (left, right) => right.span.start.utf16Offset - left.span.start.utf16Offset,
+  ))
+    text =
+      text.slice(0, reference.span.start.utf16Offset) +
+      newName +
+      text.slice(reference.span.end.utf16Offset);
+  for (const context of match.contexts) {
+    const sources = new Map(context.sources);
+    sources.set(path, new TextEncoder().encode(text));
+    const loaded = loadProjectSourceGraph({
+      entryPath: context.graph.entryPath,
+      rootPath: context.root,
+      sources,
+      languageVersion: "0.4",
+    });
+    if (!loaded.success || !analyzeProjectSourceGraph(loaded.graph).success) return null;
+  }
+  const uri = pathToFileURL(join(match.context.root, ...path.split("/"))).toString();
+  return {
+    changes: {
+      [uri]: references.map((reference) => ({
+        range: sourceRange(reference.span, originalText),
+        newText: newName,
+      })),
+    },
+  };
 }
 
 function availableSignatures() {
   return languageVersion === "0.1" ? CORE_SIGNATURES : [...CORE_SIGNATURES, ...STRING_SIGNATURES];
 }
 
-function activeCall(text: string, offset: number): { name: string; parameter: number } | undefined {
+function activeCall(
+  text: string,
+  offset: number,
+): { name: string; namespace?: string; parameter: number } | undefined {
   const stack: { open: number; commas: number }[] = [];
   let quoted = false;
   let escaped = false;
@@ -1051,9 +1415,17 @@ function activeCall(text: string, offset: number): { name: string; parameter: nu
   }
   const current = stack[stack.length - 1];
   if (!current) return undefined;
-  const before = text.slice(0, current.open).match(/([\p{ID_Start}_][\p{ID_Continue}_]*)\s*$/u);
-  const name = before?.[1];
-  return name ? { name, parameter: current.commas } : undefined;
+  const before = text
+    .slice(0, current.open)
+    .match(/((?:[\p{ID_Start}_][\p{ID_Continue}_]*\.)?[\p{ID_Start}_][\p{ID_Continue}_]*)\s*$/u);
+  const qualifiedName = before?.[1];
+  if (!qualifiedName) return undefined;
+  const segments = qualifiedName.split(".");
+  return {
+    name: segments.at(-1) ?? qualifiedName,
+    ...(segments.length > 1 ? { namespace: segments[0] } : {}),
+    parameter: current.commas,
+  };
 }
 
 function wordAt(text: string, offset: number): string | undefined {
@@ -1182,6 +1554,23 @@ function handleRequest(method: string, params: JsonObject): unknown {
         kind: 3,
         detail: `${fn.parameters.map((parameter) => formatType(parameter.type)).join(", ")} -> ${formatType(fn.returnType)}`,
       } as (typeof items)[number]);
+    if (languageVersion === "0.4" && analysis && "projectContexts" in analysis) {
+      const beforeCursor = document.text.slice(0, offset);
+      const namespace = /([\p{ID_Start}_][\p{ID_Continue}_]*)\.\s*$/u.exec(beforeCursor)?.[1];
+      if (namespace) {
+        const context = analysis.projectContexts.find(
+          (candidate) => candidate.module.path === analysis.projectModulePath,
+        );
+        for (const symbol of context
+          ? projectImportedExports(context, analysis.projectModulePath, namespace)
+          : [])
+          items.push({
+            label: symbol.name,
+            kind: 3,
+            detail: formatProjectFunction(symbol),
+          } as (typeof items)[number]);
+      }
+    }
     if (languageVersion === "0.3")
       items.push({
         label: "공개 함수",
@@ -1237,6 +1626,18 @@ function handleRequest(method: string, params: JsonObject): unknown {
     const position = asPosition(getObject(params, "position"));
     if (!document || !position) return null;
     const active = activeCall(document.text, sourceOffset(document.text, position));
+    const imported = languageVersion === "0.4" ? importedFunctionAt(document, active) : undefined;
+    if (imported) {
+      const parameters = imported.symbol.signature.parameters.map((parameter, index) => ({
+        label: `${imported.symbol.declaration?.parameters[index]?.name.raw ?? `매개변수${index + 1}`}: ${parameter ? typeName(parameter) : "임의"}`,
+      }));
+      return {
+        signatures: [{ label: formatProjectFunction(imported.symbol), parameters }],
+        activeSignature: 0,
+        activeParameter: Math.min(active?.parameter ?? 0, Math.max(0, parameters.length - 1)),
+      };
+    }
+    if (active?.namespace) return null;
     const signature = availableSignatures().find((candidate) => candidate.name === active?.name);
     if (!signature || !active) return null;
     return {
@@ -1254,6 +1655,27 @@ function handleRequest(method: string, params: JsonObject): unknown {
     const offset = sourceOffset(document.text, position);
     if (insideComment(document.text, offset)) return null;
     if (insideString(document.text, offset)) return null;
+    const alias = languageVersion === "0.4" ? projectAliasAt(document, offset) : undefined;
+    if (alias) {
+      const imports = projectImportedExports(
+        alias.context,
+        alias.modulePath,
+        alias.alias.normalized,
+      );
+      const target = projectAliasDefinition(alias);
+      const signatures = imports.map((symbol) => `- \`${formatProjectFunction(symbol)}\``);
+      return {
+        contents: {
+          kind: "markdown",
+          value: [
+            `\`${alias.alias.normalized}\` 가져오기`,
+            target ? `\n정의: ${target.uri}` : "",
+            ...signatures,
+          ].join("\n"),
+        },
+        range: sourceRange(alias.reference.span, document.text),
+      };
+    }
     const reference = referencesAt(document, offset);
     if (reference) {
       const symbol = reference.symbol;
@@ -1284,14 +1706,47 @@ function handleRequest(method: string, params: JsonObject): unknown {
       return method === "textDocument/references" || method === "textDocument/documentHighlight"
         ? []
         : null;
-    const match = referencesAt(document, sourceOffset(document.text, position));
+    const offset = sourceOffset(document.text, position);
+    const alias = languageVersion === "0.4" ? projectAliasAt(document, offset) : undefined;
+    if (alias) {
+      if (method === "textDocument/definition") return projectAliasDefinition(alias);
+      if (method === "textDocument/prepareRename")
+        return {
+          range: sourceRange(alias.reference.span, document.text),
+          placeholder: alias.reference.raw,
+        };
+      const references = projectAliasReferences(
+        alias.context,
+        alias.modulePath,
+        alias.alias.normalized,
+      );
+      if (method === "textDocument/documentHighlight")
+        return references.map((reference) => ({
+          range: sourceRange(reference.span, document.text),
+        }));
+      if (method === "textDocument/references") {
+        const context = getObject(params, "context");
+        const includeDeclaration = context?.includeDeclaration === true;
+        return references
+          .filter((reference) => includeDeclaration || !sameSpan(reference.span, alias.alias.span))
+          .map((reference) => ({
+            uri: document.uri,
+            range: sourceRange(reference.span, document.text),
+          }));
+      }
+    }
+    const match = referencesAt(document, offset);
     if (method === "textDocument/documentHighlight") {
       if (!match) return [];
       return [...match.analysis.program.references]
         .filter(([, symbolId]) => symbolId === match.symbolId)
         .map(([reference]) => ({ range: sourceRange(reference.span, document.text) }));
     }
-    if (!match && (method === "textDocument/definition" || method === "textDocument/references")) {
+    if (
+      !match &&
+      languageVersion !== "0.4" &&
+      (method === "textDocument/definition" || method === "textDocument/references")
+    ) {
       const target = workspaceFunctionAt(document, sourceOffset(document.text, position));
       const references = target
         ? uniqueWorkspaceFunction(workspaceSymbolDocuments(), target.name)
@@ -1315,6 +1770,44 @@ function handleRequest(method: string, params: JsonObject): unknown {
         }));
     }
     if (!match || !match.symbol.span) return method === "textDocument/references" ? [] : null;
+    if (match.projectContexts) {
+      if (method === "textDocument/definition")
+        return (
+          projectFunctionDefinition(match) ?? {
+            uri: document.uri,
+            range: sourceRange(match.symbol.span, document.text),
+          }
+        );
+      if (method === "textDocument/prepareRename")
+        return {
+          range: sourceRange(match.reference.span, document.text),
+          placeholder: match.reference.raw,
+        };
+      if (method === "textDocument/references") {
+        const context = getObject(params, "context");
+        const includeDeclaration = context?.includeDeclaration === true;
+        const declarationPath =
+          match.symbol.kind === "function"
+            ? (match.symbol.sourcePath ?? match.projectModulePath)
+            : match.projectModulePath;
+        return projectReferences(match)
+          .filter(
+            ({ path, reference }) =>
+              includeDeclaration ||
+              path !== declarationPath ||
+              !sameSpan(reference.span, match.symbol.span),
+          )
+          .map(({ path, reference, text }) => {
+            const project = match.projectContexts?.find((candidate) => candidate.sources.has(path));
+            return {
+              uri: project
+                ? pathToFileURL(join(project.root, ...path.split("/"))).toString()
+                : document.uri,
+              range: sourceRange(reference.span, text),
+            };
+          });
+      }
+    }
     const location = { uri: document.uri, range: sourceRange(match.symbol.span, document.text) };
     if (method === "textDocument/definition") return location;
     if (method === "textDocument/prepareRename")
@@ -1422,8 +1915,12 @@ function rename(params: JsonObject): unknown {
   const newName = getString(params, "newName");
   if (!document || !position || !newName || !/^[_\p{ID_Start}][\p{ID_Continue}_]*$/u.test(newName))
     return null;
-  const match = referencesAt(document, sourceOffset(document.text, position));
+  const offset = sourceOffset(document.text, position);
+  const alias = languageVersion === "0.4" ? projectAliasAt(document, offset) : undefined;
+  if (alias) return projectAliasRename(alias, newName);
+  const match = referencesAt(document, offset);
   if (!match?.symbol.span) return null;
+  if (match.projectContexts) return projectRename(match, newName) ?? null;
   const references = [...match.analysis.program.references]
     .filter(([, symbolId]) => symbolId === match.symbolId)
     .map(([reference]) => reference);
