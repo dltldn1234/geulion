@@ -10,7 +10,7 @@
 - Latest verified main SHA: `b0559d09bbcf04b59fad52d06d91ad5f82599a4b` (2026-11-10; `origin/main` after PR #147 merge)
 - Current unique commits reachable from main: 265 (58 initial + 207)
 - New commits reachable from baseline `afc1b41`: 207
-- Local unmerged Issue #148 implementation/test commits: pending final commit split.
+- Local unmerged Issue #148 implementation/test commits: 3 (2 implementation, 1 test); progress-log commits are counted separately.
 - Remaining to minimum 300: 35
 - Remaining to primary 400: 135
 - Remaining to extended 500: 235
