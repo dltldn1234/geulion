@@ -8,6 +8,56 @@ import { describe, expect, it } from "vitest";
 
 type Message = Record<string, unknown>;
 
+function lspPosition(text: string, offset: number, encoding: "utf-8" | "utf-16" = "utf-16") {
+  const before = text.slice(0, offset);
+  const line = (before.match(/\n/gu) ?? []).length;
+  const lineStart = Math.max(before.lastIndexOf("\n"), before.lastIndexOf("\r")) + 1;
+  const lineText = before.slice(lineStart);
+  return {
+    line,
+    character: encoding === "utf-8" ? Buffer.byteLength(lineText, "utf8") : lineText.length,
+  };
+}
+
+function applyWorkspaceEdits(
+  text: string,
+  edits: {
+    range: { start: { line: number; character: number }; end: { line: number; character: number } };
+    newText: string;
+  }[],
+  encoding: "utf-8" | "utf-16" = "utf-16",
+) {
+  const offsetAt = (position: { line: number; character: number }) => {
+    let offset = 0;
+    for (let line = 0; line < position.line; line += 1) {
+      const newline = text.indexOf("\n", offset);
+      if (newline < 0) return text.length;
+      offset = newline + 1;
+    }
+    if (encoding === "utf-16") return Math.min(text.length, offset + position.character);
+    let units = 0;
+    for (const character of text.slice(offset)) {
+      if (character === "\r" || character === "\n" || units >= position.character) break;
+      const width = Buffer.byteLength(character, "utf8");
+      if (units + width > position.character) break;
+      units += width;
+      offset += character.length;
+    }
+    return offset;
+  };
+  return [...edits]
+    .map(({ range, newText }) => ({
+      start: offsetAt(range.start),
+      end: offsetAt(range.end),
+      newText,
+    }))
+    .sort((left, right) => right.start - left.start)
+    .reduce(
+      (current, edit) => current.slice(0, edit.start) + edit.newText + current.slice(edit.end),
+      text,
+    );
+}
+
 class LspClient {
   readonly child: ChildProcessWithoutNullStreams;
   #buffer = Buffer.alloc(0);
@@ -284,6 +334,233 @@ describe("GEULION Language Server Protocol", () => {
       expect((legacyVersion.params as Message).diagnostics).toEqual(
         expect.arrayContaining([expect.objectContaining({ code: "GE2009" })]),
       );
+    } finally {
+      await client.close();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("navigates, completes, and renames public functions and import aliases in v0.4", async () => {
+    const root = await mkdtemp(join(tmpdir(), "geulion-lsp-v04-navigation-"));
+    const client = new LspClient();
+    try {
+      const libraryPath = join(root, "lib.geul");
+      const helperPath = join(root, "helper.geul");
+      const mainPath = join(root, "main.geul");
+      const unrelatedPath = join(root, "unrelated.geul");
+      const libraryText =
+        '가져오기 "./helper.geul" 별칭 도우미함수\n함수 감춤() -> 정수 { 반환 0 }\n공개 함수 계산(값: 정수) -> 정수 { 반환 값 }';
+      const helperText =
+        '가져오기 "./lib.geul" 별칭 공유\n공개 함수 보조() -> 정수 { 반환 공유.계산(2) }';
+      const mainText =
+        '가져오기 "./lib.geul" 별칭 도구\n가져오기 "./helper.geul" 별칭 도우미\n가져오기 "./unrelated.geul" 별칭 기타\n함수 시작() -> 없음 { 상수 횟수: 정수 = 1\n출력(도구.계산(횟수))\n출력(도우미.보조()) }';
+      await Promise.all([
+        writeFile(libraryPath, libraryText),
+        writeFile(helperPath, helperText),
+        writeFile(mainPath, mainText),
+        writeFile(unrelatedPath, "함수 계산(값: 정수) -> 정수 { 반환 값 }"),
+      ]);
+      const rootUri = pathToFileURL(root).toString();
+      const libraryUri = pathToFileURL(libraryPath).toString();
+      const helperUri = pathToFileURL(helperPath).toString();
+      const mainUri = pathToFileURL(mainPath).toString();
+      await client.request("initialize", {
+        capabilities: { general: { positionEncodings: ["utf-8"] } },
+        rootUri,
+        workspaceFolders: [{ uri: rootUri, name: "project" }],
+        initializationOptions: { languageVersion: "0.4" },
+      });
+      client.notification("initialized");
+      client.notification("textDocument/didOpen", {
+        textDocument: { uri: mainUri, languageId: "geulion", version: 1, text: mainText },
+      });
+      const mainDiagnostics = await client.waitFor(
+        (message) =>
+          message.method === "textDocument/publishDiagnostics" &&
+          (message.params as Message).uri === mainUri,
+      );
+      expect((mainDiagnostics.params as Message).diagnostics).toEqual([]);
+
+      const editedLibraryText = `// 열린 버퍼가 디스크보다 우선\n${libraryText}`;
+      client.notification("textDocument/didOpen", {
+        textDocument: {
+          uri: libraryUri,
+          languageId: "geulion",
+          version: 2,
+          text: editedLibraryText,
+        },
+      });
+      client.notification("textDocument/didOpen", {
+        textDocument: { uri: helperUri, languageId: "geulion", version: 1, text: helperText },
+      });
+      await client.waitFor(
+        (message) =>
+          message.method === "textDocument/publishDiagnostics" &&
+          (message.params as Message).uri === libraryUri &&
+          (message.params as Message).version === 2,
+      );
+
+      const callOffset = mainText.indexOf("계산");
+      const definition = await client.request("textDocument/definition", {
+        textDocument: { uri: mainUri },
+        position: lspPosition(mainText, callOffset, "utf-8"),
+      });
+      expect(definition.result).toMatchObject({
+        uri: libraryUri,
+        range: {
+          start: { line: 3, character: Buffer.byteLength("공개 함수 ", "utf8") },
+          end: { line: 3, character: Buffer.byteLength("공개 함수 계산", "utf8") },
+        },
+      });
+      const localDefinitionOffset = mainText.indexOf("횟수");
+      const localDefinition = await client.request("textDocument/definition", {
+        textDocument: { uri: mainUri },
+        position: lspPosition(mainText, localDefinitionOffset, "utf-8"),
+      });
+      expect(localDefinition.result).toMatchObject({
+        uri: mainUri,
+        range: {
+          start: lspPosition(mainText, localDefinitionOffset, "utf-8"),
+          end: lspPosition(mainText, localDefinitionOffset + "횟수".length, "utf-8"),
+        },
+      });
+
+      const declarationOffset = editedLibraryText.lastIndexOf("계산");
+      const references = await client.request("textDocument/references", {
+        textDocument: { uri: libraryUri },
+        position: lspPosition(editedLibraryText, declarationOffset, "utf-8"),
+        context: { includeDeclaration: true },
+      });
+      expect(references.result).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ uri: libraryUri }),
+          expect.objectContaining({ uri: helperUri }),
+          expect.objectContaining({ uri: mainUri }),
+        ]),
+      );
+      expect((references.result as Message[]).length).toBe(3);
+
+      const completion = await client.request("textDocument/completion", {
+        textDocument: { uri: mainUri },
+        position: lspPosition(mainText, mainText.indexOf("도구.") + "도구.".length, "utf-8"),
+      });
+      const completionItems = (completion.result as { items: { label: string; detail?: string }[] })
+        .items;
+      expect(completionItems.map(({ label }) => label)).toContain("계산");
+      expect(completionItems.map(({ label }) => label)).not.toContain("감춤");
+      expect(completionItems.find(({ label }) => label === "계산")?.detail).toContain("값: 정수");
+
+      const signature = await client.request("textDocument/signatureHelp", {
+        textDocument: { uri: mainUri },
+        position: lspPosition(
+          mainText,
+          mainText.indexOf("도구.계산(횟수)") + "도구.계산(횟수".length,
+          "utf-8",
+        ),
+      });
+      expect(signature.result).toMatchObject({
+        signatures: [expect.objectContaining({ label: "계산(값: 정수) -> 정수" })],
+      });
+      const aliasHover = await client.request("textDocument/hover", {
+        textDocument: { uri: mainUri },
+        position: lspPosition(mainText, mainText.indexOf("도구") + 1, "utf-8"),
+      });
+      expect((aliasHover.result as Message).contents).toMatchObject({
+        kind: "markdown",
+        value: expect.stringContaining("계산(값: 정수) -> 정수"),
+      });
+
+      const functionRename = await client.request("textDocument/rename", {
+        textDocument: { uri: libraryUri },
+        position: lspPosition(editedLibraryText, declarationOffset, "utf-8"),
+        newName: "합산",
+      });
+      const functionEdits = (functionRename.result as { changes: Record<string, Message[]> })
+        .changes;
+      expect(Object.keys(functionEdits).sort()).toEqual([helperUri, libraryUri, mainUri].sort());
+      expect(Object.values(functionEdits).flat()).toHaveLength(3);
+
+      const renamedLibrary = applyWorkspaceEdits(
+        editedLibraryText,
+        functionEdits[libraryUri] as Parameters<typeof applyWorkspaceEdits>[1],
+        "utf-8",
+      );
+      const renamedHelper = applyWorkspaceEdits(
+        helperText,
+        functionEdits[helperUri] as Parameters<typeof applyWorkspaceEdits>[1],
+        "utf-8",
+      );
+      const renamedMain = applyWorkspaceEdits(
+        mainText,
+        functionEdits[mainUri] as Parameters<typeof applyWorkspaceEdits>[1],
+        "utf-8",
+      );
+      for (const [uri, version, text] of [
+        [libraryUri, 3, renamedLibrary],
+        [helperUri, 2, renamedHelper],
+        [mainUri, 2, renamedMain],
+      ] as const)
+        client.notification("textDocument/didChange", {
+          textDocument: { uri, version },
+          contentChanges: [{ text }],
+        });
+      const renamedDiagnostics = await client.waitFor(
+        (message) =>
+          message.method === "textDocument/publishDiagnostics" &&
+          (message.params as Message).uri === mainUri &&
+          (message.params as Message).version === 2,
+      );
+      expect((renamedDiagnostics.params as Message).diagnostics).toEqual([]);
+
+      const localRename = await client.request("textDocument/rename", {
+        textDocument: { uri: mainUri },
+        position: lspPosition(renamedMain, renamedMain.indexOf("횟수"), "utf-8"),
+        newName: "개수",
+      });
+      const localEdits = (localRename.result as { changes: Record<string, Message[]> }).changes;
+      expect(Object.keys(localEdits)).toEqual([mainUri]);
+      expect(localEdits[mainUri]).toHaveLength(2);
+      const renamedLocal = applyWorkspaceEdits(
+        renamedMain,
+        localEdits[mainUri] as Parameters<typeof applyWorkspaceEdits>[1],
+        "utf-8",
+      );
+      client.notification("textDocument/didChange", {
+        textDocument: { uri: mainUri, version: 3 },
+        contentChanges: [{ text: renamedLocal }],
+      });
+      const localDiagnostics = await client.waitFor(
+        (message) =>
+          message.method === "textDocument/publishDiagnostics" &&
+          (message.params as Message).uri === mainUri &&
+          (message.params as Message).version === 3,
+      );
+      expect((localDiagnostics.params as Message).diagnostics).toEqual([]);
+
+      const aliasRename = await client.request("textDocument/rename", {
+        textDocument: { uri: mainUri },
+        position: lspPosition(renamedLocal, renamedLocal.indexOf("도구") + 1, "utf-8"),
+        newName: "계산기",
+      });
+      const aliasEdits = (aliasRename.result as { changes: Record<string, Message[]> }).changes;
+      expect(Object.keys(aliasEdits)).toEqual([mainUri]);
+      expect(aliasEdits[mainUri]).toHaveLength(2);
+      const renamedAlias = applyWorkspaceEdits(
+        renamedLocal,
+        aliasEdits[mainUri] as Parameters<typeof applyWorkspaceEdits>[1],
+        "utf-8",
+      );
+      client.notification("textDocument/didChange", {
+        textDocument: { uri: mainUri, version: 4 },
+        contentChanges: [{ text: renamedAlias }],
+      });
+      const aliasDiagnostics = await client.waitFor(
+        (message) =>
+          message.method === "textDocument/publishDiagnostics" &&
+          (message.params as Message).uri === mainUri &&
+          (message.params as Message).version === 4,
+      );
+      expect((aliasDiagnostics.params as Message).diagnostics).toEqual([]);
     } finally {
       await client.close();
       await rm(root, { recursive: true, force: true });
