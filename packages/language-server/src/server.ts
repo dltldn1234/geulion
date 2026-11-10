@@ -1,8 +1,14 @@
 #!/usr/bin/env node
-import { readdirSync, readFileSync } from "node:fs";
-import { isAbsolute, join, relative, sep } from "node:path";
+import { lstatSync, readdirSync, readFileSync } from "node:fs";
+import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { checkSource, parseSource, type LanguageVersion } from "@geulion/compiler";
+import {
+  analyzeProjectSourceGraph,
+  checkSource,
+  loadProjectSourceGraph,
+  parseSource,
+  type LanguageVersion,
+} from "@geulion/compiler";
 import type {
   CallExpressionNode,
   Diagnostic,
@@ -19,7 +25,7 @@ type Range = { start: Position; end: Position };
 type Document = { uri: string; version: number; text: string };
 type PositionEncoding = "utf-8" | "utf-16" | "utf-32";
 type SemanticTokenSnapshot = { resultId: string; data: number[] };
-const LANGUAGE_VERSIONS = new Set<LanguageVersion>(["0.1", "0.2", "0.3"]);
+const LANGUAGE_VERSIONS = new Set<LanguageVersion>(["0.1", "0.2", "0.3", "0.4"]);
 const KEYWORDS = [
   "상수",
   "변수",
@@ -127,6 +133,8 @@ type GeulTypeShape =
   | { kind: "collection"; name: string; element: GeulTypeShape };
 const documents = new Map<string, Document>();
 const workspaceProgramCache = new Map<string, { text: string; program: ProgramNode | undefined }>();
+const projectEntriesByRoot = new Map<string, Set<string>>();
+const publishedProjectPathsByRoot = new Map<string, Set<string>>();
 const semanticTokenSnapshots = new Map<string, SemanticTokenSnapshot[]>();
 const MAX_SEMANTIC_TOKEN_SNAPSHOTS = 4;
 const IGNORED_WORKSPACE_DIRECTORIES = new Set([".git", "node_modules", "dist", "coverage"]);
@@ -568,7 +576,198 @@ function safeDiagnosticEdit(
   return null;
 }
 
+function projectRootForPath(path: string): string {
+  const candidates = workspaceRoots
+    .map((root) => ({
+      root,
+      relative: relative(root, path),
+    }))
+    .filter(
+      ({ relative: fromRoot }) =>
+        fromRoot === "" ||
+        (fromRoot !== ".." && !fromRoot.startsWith(`..${sep}`) && !isAbsolute(fromRoot)),
+    )
+    .sort((left, right) => left.relative.length - right.relative.length);
+  return candidates[0]?.root ?? dirname(path);
+}
+
+function isSymlinkPath(root: string, relativePath: string): boolean {
+  let current = root;
+  for (const component of relativePath.split(sep)) {
+    current = join(current, component);
+    try {
+      if (lstatSync(current).isSymbolicLink()) return true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+      return true;
+    }
+  }
+  return false;
+}
+
+function projectSourceSnapshot(root: string): {
+  readonly sources: Map<string, Uint8Array>;
+  readonly documentsByPath: Map<string, Document>;
+} {
+  const sources = new Map<string, Uint8Array>();
+  const documentsByPath = new Map<string, Document>();
+  for (const path of workspaceFiles(root)) {
+    const modulePath = relative(root, path).split(sep).join("/");
+    try {
+      sources.set(modulePath, readFileSync(path));
+    } catch {
+      // A single unreadable source does not hide other project files.
+    }
+  }
+  for (const document of documents.values()) {
+    const normalizedUri = fileUri(document.uri);
+    if (!normalizedUri) continue;
+    const path = fileURLToPath(normalizedUri);
+    const fromRoot = relative(root, path);
+    if (
+      !path.endsWith(".geul") ||
+      fromRoot === ".." ||
+      fromRoot.startsWith(`..${sep}`) ||
+      isAbsolute(fromRoot) ||
+      fromRoot === ""
+    )
+      continue;
+    const modulePath = fromRoot.split(sep).join("/");
+    if (isSymlinkPath(root, fromRoot)) continue;
+    sources.set(modulePath, new TextEncoder().encode(document.text));
+    documentsByPath.set(modulePath, document);
+  }
+  return { sources, documentsByPath };
+}
+
+function projectDiagnosticsForRoot(
+  root: string,
+  active: Document,
+): {
+  readonly diagnosticsByPath: Map<string, Diagnostic[]>;
+  readonly textsByPath: Map<string, string>;
+  readonly affectedPaths: Set<string>;
+  readonly documentsByPath: Map<string, Document>;
+} {
+  const snapshot = projectSourceSnapshot(root);
+  const { sources, documentsByPath } = snapshot;
+  const diagnosticsByPath = new Map<string, Diagnostic[]>();
+  const textsByPath = new Map<string, string>();
+  const affectedPaths = new Set<string>();
+  const entries = projectEntriesByRoot.get(root) ?? new Set<string>();
+  for (const [path, source] of sources) {
+    let text: string;
+    try {
+      text = new TextDecoder("utf-8", { fatal: true }).decode(source);
+    } catch {
+      continue;
+    }
+    textsByPath.set(path, text);
+    const parsed = parseSource({ path, source });
+    if (parsed.success && parsed.ast.functions.some((fn) => fn.name.normalized === "시작"))
+      entries.add(path);
+  }
+  for (const entry of [...entries]) if (!sources.has(entry)) entries.delete(entry);
+  projectEntriesByRoot.set(root, entries);
+
+  const appendDiagnostics = (items: readonly Diagnostic[]) => {
+    for (const diagnostic of items) {
+      const path = diagnostic.path ?? "";
+      const current = diagnosticsByPath.get(path) ?? [];
+      const key = JSON.stringify([
+        diagnostic.code,
+        diagnostic.message,
+        diagnostic.range?.start.utf16Offset,
+        diagnostic.range?.end.utf16Offset,
+      ]);
+      if (
+        current.length < 100 &&
+        !current.some(
+          (item) =>
+            JSON.stringify([
+              item.code,
+              item.message,
+              item.range?.start.utf16Offset,
+              item.range?.end.utf16Offset,
+            ]) === key,
+        )
+      )
+        current.push(diagnostic);
+      diagnosticsByPath.set(path, current);
+      affectedPaths.add(path);
+    }
+  };
+  for (const entryPath of entries) {
+    const loaded = loadProjectSourceGraph({
+      entryPath,
+      rootPath: root,
+      sources,
+      languageVersion: "0.4",
+    });
+    if (!loaded.success) {
+      appendDiagnostics(loaded.diagnostics);
+      continue;
+    }
+    loaded.graph.modules.forEach(({ path }) => affectedPaths.add(path));
+    const analysis = analyzeProjectSourceGraph(loaded.graph);
+    if (!analysis.success) appendDiagnostics(analysis.diagnostics);
+  }
+
+  const activePath = relative(root, documentPath(active.uri)).split(sep).join("/");
+  if (!affectedPaths.has(activePath)) {
+    const parsed = parseSource({
+      path: activePath,
+      source: sources.get(activePath) ?? new TextEncoder().encode(active.text),
+    });
+    if (!parsed.success) appendDiagnostics(parsed.diagnostics);
+  }
+  return { diagnosticsByPath, textsByPath, affectedPaths, documentsByPath };
+}
+
+function publishProjectDiagnostics(active: Document): void {
+  const root = projectRootForPath(documentPath(active.uri));
+  const result = projectDiagnosticsForRoot(root, active);
+  const previous = publishedProjectPathsByRoot.get(root) ?? new Set<string>();
+  const paths = new Set([...previous, ...result.affectedPaths]);
+  for (const path of paths) {
+    if (!path) continue;
+    const uri = pathToFileURL(join(root, ...path.split("/"))).toString();
+    const document =
+      result.documentsByPath.get(path) ??
+      [...documents.values()].find((candidate) => fileUri(candidate.uri) === uri);
+    const text = result.textsByPath.get(path) ?? document?.text ?? "";
+    const sourceTexts = result.textsByPath;
+    const diagnostics = (result.diagnosticsByPath.get(path) ?? []).map((diagnostic) =>
+      toLspDiagnostic(diagnostic, text, sourceTexts, (relatedPath) =>
+        pathToFileURL(join(root, ...relatedPath.split("/"))).toString(),
+      ),
+    );
+    notify("textDocument/publishDiagnostics", {
+      uri: document?.uri ?? uri,
+      ...(document ? { version: document.version } : {}),
+      diagnostics,
+    });
+  }
+  publishedProjectPathsByRoot.set(root, result.affectedPaths);
+}
+
+function clearProjectDiagnostics(root: string): void {
+  for (const path of publishedProjectPathsByRoot.get(root) ?? []) {
+    if (!path) continue;
+    notify("textDocument/publishDiagnostics", {
+      uri: pathToFileURL(join(root, ...path.split("/"))).toString(),
+      diagnostics: [],
+    });
+  }
+  publishedProjectPathsByRoot.delete(root);
+  projectEntriesByRoot.delete(root);
+}
+
 function publishDiagnostics(document: Document): void {
+  if (languageVersion === "0.4") {
+    publishProjectDiagnostics(document);
+    return;
+  }
   const result = analyze(document);
   const diagnostics = result.diagnostics.map((diagnostic) =>
     toLspDiagnostic(diagnostic, document.text),
@@ -580,7 +779,12 @@ function publishDiagnostics(document: Document): void {
   });
 }
 
-function toLspDiagnostic(diagnostic: Diagnostic, text: string): JsonObject {
+function toLspDiagnostic(
+  diagnostic: Diagnostic,
+  text: string,
+  relatedTexts?: ReadonlyMap<string, string>,
+  relatedUri: (path: string) => string = pathToUri,
+): JsonObject {
   const range = diagnostic.range
     ? sourceRange(diagnostic.range, text)
     : { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } };
@@ -588,7 +792,10 @@ function toLspDiagnostic(diagnostic: Diagnostic, text: string): JsonObject {
     if (!related.path || !related.range) return [];
     return [
       {
-        location: { uri: pathToUri(related.path), range: sourceRange(related.range, text) },
+        location: {
+          uri: relatedUri(related.path),
+          range: sourceRange(related.range, relatedTexts?.get(related.path) ?? text),
+        },
         message: related.message,
       },
     ];
@@ -1288,6 +1495,13 @@ function handleNotification(method: string, params: JsonObject): void {
       ? [...new Set([...workspaceRoots, ...added])].filter((root) => !removedSet.has(root))
       : added;
     workspaceFoldersManaged = true;
+    if (languageVersion === "0.4") {
+      for (const root of removed) clearProjectDiagnostics(root);
+      const activeByRoot = new Map<string, Document>();
+      for (const document of documents.values())
+        activeByRoot.set(projectRootForPath(documentPath(document.uri)), document);
+      for (const document of activeByRoot.values()) publishProjectDiagnostics(document);
+    }
     return;
   }
   if (method === "textDocument/didOpen") {
@@ -1329,9 +1543,11 @@ function handleNotification(method: string, params: JsonObject): void {
     const textDocument = getObject(params, "textDocument");
     const uri = getString(textDocument, "uri");
     if (uri) {
+      const closed = documents.get(uri);
       documents.delete(uri);
       semanticTokenSnapshots.delete(uri);
       notify("textDocument/publishDiagnostics", { uri, diagnostics: [] });
+      if (languageVersion === "0.4" && closed) publishProjectDiagnostics(closed);
     }
     return;
   }
@@ -1340,8 +1556,18 @@ function handleNotification(method: string, params: JsonObject): void {
     const geulion = getObject(settings ?? {}, "geulion");
     const next = getString(geulion ?? {}, "languageVersion");
     if (next && LANGUAGE_VERSIONS.has(next as LanguageVersion)) {
+      const previousVersion = languageVersion;
       languageVersion = next as LanguageVersion;
-      for (const document of documents.values()) publishDiagnostics(document);
+      if (previousVersion === "0.4" && languageVersion !== "0.4")
+        for (const root of publishedProjectPathsByRoot.keys()) clearProjectDiagnostics(root);
+      if (languageVersion === "0.4") {
+        const activeByRoot = new Map<string, Document>();
+        for (const document of documents.values())
+          activeByRoot.set(projectRootForPath(documentPath(document.uri)), document);
+        for (const document of activeByRoot.values()) publishProjectDiagnostics(document);
+      } else {
+        for (const document of documents.values()) publishDiagnostics(document);
+      }
     }
   }
 }
